@@ -7,67 +7,87 @@ use Carbon\Carbon;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Database\Eloquent\Builder;
 
 class AgendamentosLocacao extends BaseWidget
 {
     protected static ?int $sort = 9;
-
     protected static ?string $heading = 'Próximos Agendamentos';
+
+    protected function getTableQuery(): Builder
+    {
+        return Agendamento::query()
+            ->with(['cliente:id,nome', 'veiculo:id,modelo,placa'])
+            ->where('status', 0)
+            ->orderBy('data_saida', 'asc');
+    }
 
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                Agendamento::query()->where('status', 0)->orderby('data_saida', 'asc')
-            )
+            ->query($this->getTableQuery())
             ->columns([
                 Tables\Columns\TextColumn::make('cliente.nome')
-                ->sortable()
-                ->searchable()
-                ->label('Cliente'),
-            Tables\Columns\TextColumn::make('veiculo.modelo')
-                ->sortable()
-                ->searchable()
-                ->label('Veículo'),
-            Tables\Columns\TextColumn::make('veiculo.placa')
-                ->searchable()
-                 ->label('Placa'),
+                    ->sortable()
+                    ->searchable()
+                    ->label('Cliente')
+                    ->toggleable(),
+                
+                Tables\Columns\TextColumn::make('veiculo.modelo')
+                    ->sortable()
+                    ->searchable()
+                    ->label('Veículo')
+                    ->toggleable(),
+                
+                Tables\Columns\TextColumn::make('veiculo.placa')
+                    ->searchable()
+                    ->label('Placa')
+                    ->toggleable(),
+                
+                Tables\Columns\TextColumn::make('data_saida')
+                    ->badge()
+                    ->label('Data Saída')
+                    ->date('d/m/Y')
+                    ->color(fn ($state): string => $this->getDataSaidaColor($state))
+                    ->sortable()
+                    ->toggleable(),
+                
+                Tables\Columns\TextColumn::make('hora_saida')
+                    ->label('Hora Saída')
+                    ->toggleable(),
+                
+                Tables\Columns\TextColumn::make('data_retorno')
+                    ->label('Data Retorno')
+                    ->date('d/m/Y')
+                    ->toggleable(),
+                
+                Tables\Columns\TextColumn::make('hora_retorno')
+                    ->label('Hora Retorno')
+                    ->toggleable(),
+            ])
+            ->defaultPaginationPageOption(10)
+            ->paginated([10, 25, 50]);
+    }
 
-            Tables\Columns\TextColumn::make('data_saida')
-                ->badge()
-                ->label('Data Saída')
-                ->date()
-                ->color(static function ($state): string {
-                    $hoje = Carbon::today();
-                    $dataSaida = Carbon::parse($state);
-                    $qtd_dias = $hoje->diffInDays($dataSaida, false);
-                 //  dd($qtd_dias.' - '.$dataSaida.' - '.$hoje);
-                //   echo $qtd_dias;
+    private function getDataSaidaColor(string $state): string
+    {
+        $hoje = Carbon::today();
+        $dataSaida = Carbon::parse($state);
+        $qtdDias = $hoje->diffInDays($dataSaida, false);
 
-                    if ($qtd_dias <= 3 && $qtd_dias >= 0) {
-                        return 'danger';
-                    }
+        if ($qtdDias <= 3 && $qtdDias >= 0) {
+            return 'danger';
+        }
 
-                    if($qtd_dias < 0) {
-                        return 'warning';
-                    }
+        if ($qtdDias < 0) {
+            return 'warning';
+        }
 
-                    if($qtd_dias > 3) {
-                        return 'success';
-                    }
+        return 'success';
+    }
 
-
-
-                }),
-
-            Tables\Columns\TextColumn::make('hora_saida')
-                ->sortable()
-                ->label('Hora Saída'),
-            Tables\Columns\TextColumn::make('data_retorno')
-                ->label('Data Retorno')
-                ->date(),
-            Tables\Columns\TextColumn::make('hora_retorno')
-                ->label('Hora Retorno'),
-            ]);
+    public static function canView(): bool
+    {
+        return Agendamento::where('status', 0)->exists();
     }
 }

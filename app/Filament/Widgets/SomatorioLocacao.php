@@ -2,11 +2,11 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\Locacao;
-use App\Models\Temp_lucratividade;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Carbon\Carbon;
 
 class SomatorioLocacao extends BaseWidget
 {
@@ -14,23 +14,101 @@ class SomatorioLocacao extends BaseWidget
 
     protected function getCards(): array
     {
-        $ano = date('Y');
-        $mes = date('m');
-        $dia = date('d');
-        // dd($ano);
-        return [
-            Stat::make('Total de Locações', number_format(Locacao::all()->sum('valor_total_desconto'), 2, ",", "."))
-                ->description('Todo Perído')
-                ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success'),
-            Stat::make('Total de Locações', number_format(DB::table('locacaos')->whereYear('data_saida', $ano)->whereMonth('data_saida', $mes)->sum('valor_total_desconto'), 2, ",", "."))
-                ->description('Este mês')
-                ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success'),
-            Stat::make('Total de Locações', number_format(DB::table('locacaos')->whereYear('data_saida', $ano)->whereMonth('data_saida', $mes)->whereDay('data_saida', $dia)->sum('valor_total_desconto'), 2, ",", "."))
-                ->description('Hoje')
-                ->descriptionIcon('heroicon-m-arrow-trending-up')
-                ->color('success'),
+        $now = Carbon::now();
+        $ano = $now->year;
+        $mes = $now->month;
+        $hoje = $now->toDateString();
+
+        // Chaves de cache separadas para melhor performance e granularidade
+        $cacheKeys = [
+            'total_geral' => "locacoes_total_geral",
+            'total_mes' => "locacoes_total_mes_{$ano}_{$mes}",
+            'total_dia' => "locacoes_total_dia_{$hoje}",
         ];
+
+        // Busca dados com cache, usando tempos de expiração diferentes
+        $totalGeral = Cache::remember($cacheKeys['total_geral'], now()->addHour(), function () {
+            return DB::table('locacaos')
+                ->select(DB::raw('COALESCE(SUM(valor_total_desconto), 0) as total'))
+                ->value('total');
+        });
+
+        $totalMes = Cache::remember($cacheKeys['total_mes'], now()->addMinutes(10), function () use ($ano, $mes) {
+            $inicioMes = Carbon::create($ano, $mes, 1)->startOfMonth()->toDateString();
+            $fimMes = Carbon::create($ano, $mes, 1)->endOfMonth()->toDateString();
+
+            return DB::table('locacaos')
+                ->whereBetween('data_saida', [$inicioMes, $fimMes])
+                ->select(DB::raw('COALESCE(SUM(valor_total_desconto), 0) as total'))
+                ->value('total');
+        });
+
+        $totalDia = Cache::remember($cacheKeys['total_dia'], now()->addMinutes(5), function () use ($hoje) {
+            return DB::table('locacaos')
+                ->whereDate('data_saida', $hoje)
+                ->select(DB::raw('COALESCE(SUM(valor_total_desconto), 0) as total'))
+                ->value('total');
+        });
+
+        // Formatador reutilizável
+        $formatarValor = fn($valor) => number_format($valor, 2, ",", ".");
+
+        return [
+            Stat::make('Total Geral de Locações', "R$ " . $formatarValor($totalGeral))
+                ->description('Todo Período')
+                ->descriptionIcon('heroicon-m-arrow-trending-up')
+                ->color('success')
+                ->chart([7, 3, 4, 5, 6, 3, 5, 8]) // Gráfico de exemplo
+                ->extraAttributes([
+                    'class' => 'cursor-pointer',
+                ]),
+
+            Stat::make('Total do Mês', "R$ " . $formatarValor($totalMes))
+                ->description('Este mês')
+                ->descriptionIcon('heroicon-m-calendar-days')
+                ->color('warning')
+                ->chart([5, 6, 3, 5, 8, 7, 4, 5]) // Gráfico de exemplo
+                ->extraAttributes([
+                    'class' => 'cursor-pointer',
+                ]),
+
+            Stat::make('Total de Hoje', "R$ " . $formatarValor($totalDia))
+                ->description('Hoje')
+                ->descriptionIcon('heroicon-m-clock')
+                ->color('info')
+                ->chart([2, 3, 4, 5, 1, 3, 2, 4]) // Gráfico de exemplo
+                ->extraAttributes([
+                    'class' => 'cursor-pointer',
+                ]),
+        ];
+    }
+
+    // Método para limpar cache quando necessário
+    public static function clearCache(): void
+    {
+        $now = Carbon::now();
+        $ano = $now->year;
+        $mes = $now->month;
+        $hoje = $now->toDateString();
+
+        Cache::forget("locacoes_total_geral");
+        Cache::forget("locacoes_total_mes_{$ano}_{$mes}");
+        Cache::forget("locacoes_total_dia_{$hoje}");
+    }
+
+    // Método para invalidar cache quando nova locação é criada
+    public static function invalidateCacheOnNewLocacao(): void
+    {
+        $now = Carbon::now();
+        $ano = $now->year;
+        $mes = $now->month;
+        $hoje = $now->toDateString();
+
+        // Limpa cache geral (persiste 1 hora, mas pode ser forçado)
+        Cache::forget("locacoes_total_geral");
+        
+        // Limpa cache do mês e dia atual
+        Cache::forget("locacoes_total_mes_{$ano}_{$mes}");
+        Cache::forget("locacoes_total_dia_{$hoje}");
     }
 }

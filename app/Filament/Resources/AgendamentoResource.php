@@ -230,11 +230,7 @@ class AgendamentoResource extends Resource
                                     ->default(Carbon::now())
                                     ->label('Hora Retorno')
                                     ->required(false),
-                                Forms\Components\TextInput::make('km_saida')
-                                    ->label('Km Saída')
-                                    ->required(false),
-                                Forms\Components\TextInput::make('km_retorno')
-                                    ->label('Km Retorno'),
+                                
 
                             ]),
                         Fieldset::make('Valores')
@@ -397,9 +393,9 @@ class AgendamentoResource extends Resource
                     })
             ])
             ->actions([
-                Tables\Actions\Action::make('Imprimir')
-                    ->url(fn(Agendamento $record): string => route('imprimirAgendamento', $record))
-                    ->openUrlInNewTab(),
+                // Tables\Actions\Action::make('Imprimir')
+                //     ->url(fn(Agendamento $record): string => route('imprimirAgendamento', $record))
+                //     ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
