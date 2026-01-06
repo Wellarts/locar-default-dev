@@ -13,7 +13,7 @@ class Locacao extends Model
 
     protected $fillable = [
 
-        
+
         'cliente_id',
         'veiculo_id',
         'data_saida',
@@ -60,9 +60,14 @@ class Locacao extends Model
         return $this->belongsTo(Veiculo::class);
     }
 
-    public function OcorrenciaLocacao()
+    public function ocorrencias()
     {
         return $this->hasMany(ocorrenciaLocacao::class);
+    }
+
+    public function getKmPercorridoAttribute()
+    {
+        return $this->km_retorno - $this->km_saida;
     }
 
     public function getActivitylogOptions(): LogOptions

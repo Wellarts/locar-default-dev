@@ -56,7 +56,7 @@ class TotalLucratividade extends BaseWidget
                 ->chart($this->getChartData('faturamento', $faturamentoTotal))
                 ->extraAttributes([
                     'class' => 'cursor-pointer hover:shadow-md transition-shadow duration-200',
-                    'title' => 'Clique para detalhes do faturamento',
+                    //'title' => 'Clique para detalhes do faturamento',
                 ]),
             
             Stat::make('Custos Totais', $formatarValor($custosTotal))
@@ -66,7 +66,7 @@ class TotalLucratividade extends BaseWidget
                 ->chart($this->getChartData('custos', $custosTotal))
                 ->extraAttributes([
                     'class' => 'cursor-pointer hover:shadow-md transition-shadow duration-200',
-                    'title' => 'Clique para detalhes dos custos',
+                   // 'title' => 'Clique para detalhes dos custos',
                 ]),
             
             Stat::make('Lucro Líquido', $formatarValor($lucroTotal))
@@ -76,7 +76,7 @@ class TotalLucratividade extends BaseWidget
                 ->chart($this->getChartData('lucro', $lucroTotal))
                 ->extraAttributes([
                     'class' => 'cursor-pointer hover:shadow-md transition-shadow duration-200',
-                    'title' => 'Clique para detalhes do lucro',
+                   // 'title' => 'Clique para detalhes do lucro',
                 ]),
         ];
     }

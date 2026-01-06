@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Exports\LocacaoExporter;
 use App\Filament\Resources\LocacaoResource\Pages;
-use App\Filament\Resources\LocacaoResource\RelationManagers;
 use App\Filament\Resources\LocacaoResource\RelationManagers\OcorrenciaRelationManager;
 use App\Models\Cliente;
 use App\Models\Estado;
@@ -46,6 +45,8 @@ use Laravel\SerializableClosure\Serializers\Native;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 use Illuminate\Support\Str;
 use Saade\FilamentAutograph\Forms\Components\SignaturePad;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class LocacaoResource extends Resource
 {
@@ -57,7 +58,16 @@ class LocacaoResource extends Resource
 
     protected static ?string $navigationGroup = 'Locar';
 
+    // Cache keys
+    protected static string $cacheKeyEstados = 'estados_list';
+    protected static string $cacheKeyVeiculos = 'veiculos_list_';
+    protected static int $cacheDuration = 3600; // 1 hora
 
+    // Eager loading para evitar consultas N+1
+    protected static function getEagerLoadRelations(): array
+    {
+        return ['cliente:id,nome,validade_cnh', 'veiculo:id,modelo,placa,km_atual,valor_diaria,valor_semana'];
+    }
 
     public static function form(Form $form): Form
     {
@@ -116,7 +126,11 @@ class LocacaoResource extends Resource
                                                                     ->searchable()
                                                                     ->required()
                                                                     ->default(33)
-                                                                    ->options(Estado::all()->pluck('nome', 'id')->toArray())
+                                                                    ->options(function () {
+                                                                        return Cache::remember(static::$cacheKeyEstados, static::$cacheDuration, function () {
+                                                                            return Estado::all()->pluck('nome', 'id')->toArray();
+                                                                        });
+                                                                    })
                                                                     ->live(),
                                                                 Forms\Components\Select::make('cidade_id')
                                                                     ->label('Cidade')
@@ -125,11 +139,15 @@ class LocacaoResource extends Resource
                                                                     ->searchable()
                                                                     ->required()
                                                                     ->options(function (callable $get) {
-                                                                        $estado = Estado::find($get('estado_id'));
-                                                                        if (!$estado) {
-                                                                            return Estado::all()->pluck('nome', 'id');
+                                                                        $estadoId = $get('estado_id');
+                                                                        if (!$estadoId) {
+                                                                            return [];
                                                                         }
-                                                                        return $estado->cidade->pluck('nome', 'id');
+                                                                        $cacheKey = 'cidades_estado_' . $estadoId;
+                                                                        return Cache::remember($cacheKey, static::$cacheDuration, function () use ($estadoId) {
+                                                                            $estado = Estado::with('cidade:id,nome,estado_id')->find($estadoId);
+                                                                            return $estado ? $estado->cidade->pluck('nome', 'id')->toArray() : [];
+                                                                        });
                                                                     })
                                                                     ->live(),
                                                                 Forms\Components\TextInput::make('telefone_1')
@@ -161,7 +179,11 @@ class LocacaoResource extends Resource
                                                                 Forms\Components\Select::make('estado_exp_rg')
                                                                     ->searchable()
                                                                     ->label('UF - Expedidor')
-                                                                    ->options(Estado::all()->pluck('nome', 'id')->toArray()),
+                                                                    ->options(function () {
+                                                                        return Cache::remember(static::$cacheKeyEstados, static::$cacheDuration, function () {
+                                                                            return Estado::all()->pluck('nome', 'id')->toArray();
+                                                                        });
+                                                                    }),
                                                                 FileUpload::make('img_cnh')
                                                                     ->columnSpan([
                                                                         'xl' => 2,
@@ -175,34 +197,39 @@ class LocacaoResource extends Resource
                                                     ])
                                                     ->afterStateUpdated(function ($state) {
                                                         if ($state != null) {
-                                                            $cliente = Cliente::find($state);
-                                                            Notification::make()
-                                                                ->title('ATENÇÃO')
-                                                                ->body('A validade da CNH do cliente selecionado: ' . Carbon::parse($cliente->validade_cnh)->format('d/m/Y'))
-                                                                ->warning()
-                                                                ->persistent()
-                                                                ->send();
+                                                            $cliente = Cliente::select('validade_cnh')->find($state);
+                                                            if ($cliente && $cliente->validade_cnh) {
+                                                                Notification::make()
+                                                                    ->title('ATENÇÃO')
+                                                                    ->body('A validade da CNH do cliente selecionado: ' . Carbon::parse($cliente->validade_cnh)->format('d/m/Y'))
+                                                                    ->warning()
+                                                                    ->persistent()
+                                                                    ->send();
+                                                            }
                                                         }
                                                     }),
                                                 Forms\Components\Select::make('veiculo_id')
                                                     ->required(false)
                                                     ->label('Veículo')
                                                     ->live(onBlur: true)
-                                                    ->relationship(
-                                                        name: 'veiculo',
-                                                        modifyQueryUsing: function (Builder $query, $context) {
-                                                            if ($context === 'create') {
-                                                                $query->where('status', 1)->where('status_locado', 0)->orderBy('modelo')->orderBy('placa');
-                                                            } else {
-                                                                $query->where('status', 1)->orderBy('modelo')->orderBy('placa');
-                                                            }
+                                                    ->options(function ($context) {
+                                                        $query = Veiculo::where('status', 1);
+
+                                                        if ($context === 'create') {
+                                                            $query->where('status_locado', 0);
                                                         }
-                                                    )
-                                                    ->getOptionLabelFromRecordUsing(fn(Model $record) => "{$record->modelo} {$record->placa}")
-                                                    ->searchable(['modelo', 'placa'])
+
+                                                        return $query->orderBy('modelo')
+                                                            ->orderBy('placa')
+                                                            ->get()
+                                                            ->mapWithKeys(fn($record) => [
+                                                                $record->id => "{$record->modelo} {$record->placa}"
+                                                            ])->toArray();
+                                                    })
+                                                    ->searchable()
                                                     ->afterStateUpdated(function (Set $set, $state) {
-                                                        $veiculo = Veiculo::find($state);
-                                                        if ($state != null) {
+                                                        if ($state) {
+                                                            $veiculo = Veiculo::select('km_atual')->find($state);
                                                             $set('km_saida', $veiculo->km_atual);
                                                         }
                                                     })
@@ -220,8 +247,11 @@ class LocacaoResource extends Resource
                                                     ->inlineLabel(false)
                                                     ->live()
                                                     ->afterStateUpdated(function (Get $get, Set $set, $state) {
+                                                        // Reset quando mudar a forma de locação
                                                         if ($state == 1) {
+                                                            $set('qtd_semanas', null);
                                                         } else {
+                                                            $set('qtd_diarias', null);
                                                         }
                                                     })
                                                     ->default(1)
@@ -237,24 +267,25 @@ class LocacaoResource extends Resource
                                                     ->default(1)
                                                     ->live(onBlur: true)
                                                     ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                                        $set('data_retorno', Carbon::parse($get('data_saida'))->addWeeks($state)->format('Y-m-d'));
-                                                        $set('hora_retorno', Carbon::parse($get('hora_saida'))->format('H:i'));
-                                                        $set('qtd_diarias', Carbon::parse($get('data_saida'))->addWeeks($state)->diffInDays(Carbon::parse($get('data_saida'))));
+                                                        if (!$state || !$get('veiculo_id') || !$get('data_saida') || !$get('hora_saida')) {
+                                                            return;
+                                                        }
 
-                                                        $carro = Veiculo::find($get('veiculo_id'));
-                                                        $set('valor_total', ($carro->valor_semana * $state));
+                                                        $dataSaida = Carbon::parse($get('data_saida'));
+                                                        $dataRetorno = $dataSaida->copy()->addWeeks($state);
+                                                        $qtdDias = $dataSaida->diffInDays($dataRetorno);
+
+                                                        $veiculo = Veiculo::select('valor_semana')->find($get('veiculo_id'));
+                                                        if (!$veiculo) return;
+
+                                                        $valorTotal = $veiculo->valor_semana * $state;
+
+                                                        $set('data_retorno', $dataRetorno->format('Y-m-d'));
+                                                        $set('hora_retorno', Carbon::parse($get('hora_saida'))->format('H:i'));
+                                                        $set('qtd_diarias', $qtdDias);
+                                                        $set('valor_total', $valorTotal);
                                                         $set('valor_desconto', 0);
-                                                        $set('valor_total_desconto', ($carro->valor_semana * $state));
-                                                        Notification::make()
-                                                            ->title('ATENÇÃO')
-                                                            ->body(
-                                                                'Para as informações escolhida temos:<br>
-                                                        <b>' . $state . ' SEMANA(S) / ' . $get('qtd_diarias') . ' DIA(AS), e data de retorno do veículo para ' . Carbon::parse($get('data_saida'))->addWeeks($state)->format('d/m/Y') . '</b><br>
-                                                        '
-                                                            )
-                                                            ->danger()
-                                                            ->persistent()
-                                                            ->send();
+                                                        $set('valor_total_desconto', $valorTotal);
                                                     })
                                                     ->hidden(fn(Get $get) => $get('forma_locacao') == 1)
                                                     ->required(),
@@ -267,13 +298,15 @@ class LocacaoResource extends Resource
                                             '2xl' => 4,
                                         ])
                                             ->schema([
-
                                                 Forms\Components\DatePicker::make('data_saida')
                                                     ->default(Carbon::today())
                                                     ->displayFormat('d/m/Y')
                                                     ->label('Data Saída')
-                                                    ->required(false),
-
+                                                    ->required(false)
+                                                    ->live(onBlur: true)
+                                                    ->afterStateUpdated(function (Get $get, Set $set) {
+                                                        self::recalcularValores($get, $set);
+                                                    }),
                                                 Forms\Components\TimePicker::make('hora_saida')
                                                     ->seconds(false)
                                                     ->default(Carbon::now())
@@ -283,53 +316,14 @@ class LocacaoResource extends Resource
                                                     ->displayFormat('d/m/Y')
                                                     ->label('Data Retorno')
                                                     ->live(onBlur: true)
-                                                    ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                                        $dt_saida = Carbon::parse($get('data_saida'));
-                                                        $dt_retorno = Carbon::parse($get('data_retorno'));
-                                                        $qtd_dias = $dt_retorno->diffInDays($dt_saida);
-                                                        $set('qtd_diarias', $qtd_dias);
-
-                                                        $carro = Veiculo::find($get('veiculo_id'));
-                                                        $set('valor_total', ($carro->valor_diaria * $qtd_dias));
-                                                        $set('valor_desconto', 0);
-                                                        $set('valor_total_desconto', ($carro->valor_diaria * $qtd_dias));
-
-                                                        ### CALCULO DOS DIAS E SEMANAS
-                                                        $diferencaEmDias = $dt_saida->diffInDays($dt_retorno);
-                                                        // Calculando a diferença em semanas
-                                                        $diferencaEmSemanas = $diferencaEmDias / 7;
-
-                                                        // Arredondando para baixo para obter o número inteiro de semanas
-                                                        $semanasCompletas = floor($diferencaEmSemanas);
-                                                        // Calculando os dias restantes (módulo 7)
-                                                        $diasRestantes = $diferencaEmDias % 7;
-                                                        //Calculando os meses
-                                                        $mesesCompleto = $diferencaEmDias / 30;
-                                                        //Calculando os meses em número inteiro
-                                                        $mesesCompleto = floor($mesesCompleto);
-                                                        //Calculando semanas restantes
-                                                        $diasRestantesMeses = $diferencaEmDias % 30;
-
-                                                        Notification::make()
-                                                            ->title('ATENÇÃO')
-                                                            ->body(
-                                                                'Para as datas escolhida temos:<br>
-                                                            <b>' . $qtd_dias . ' DIA(AS).</b><br>
-                                                            <b>' . $semanasCompletas . ' SEMANA(AS) e ' . $diasRestantes . ' DIA(AS). </b> <br>
-                                                            <b>' . $mesesCompleto . ' MÊS/MESES  e ' . $diasRestantesMeses . ' DIA(AS).</b><br>
-                                                        '
-                                                            )
-                                                            ->danger()
-                                                            ->persistent()
-                                                            ->send();
+                                                    ->afterStateUpdated(function (Get $get, Set $set) {
+                                                        self::recalcularValores($get, $set);
                                                     })
-                                                    // ->hidden(fn(Get $get) => $get('forma_locacao') == 2)
                                                     ->required(false),
                                                 Forms\Components\TimePicker::make('hora_retorno')
                                                     ->seconds(false)
                                                     ->default(Carbon::now())
                                                     ->label('Hora Retorno')
-                                                    // ->hidden(fn(Get $get) => $get('forma_locacao') == 2)
                                                     ->required(false),
                                                 Forms\Components\TextInput::make('km_saida')
                                                     ->label('Km Saída')
@@ -348,15 +342,12 @@ class LocacaoResource extends Resource
                                                     ->prefix('R$')
                                                     ->inputMode('decimal')
                                                     ->currencyMask(thousandSeparator: '.', decimalSeparator: ',', precision: 2),
-
                                             ]),
                                         Forms\Components\TextInput::make('qtd_diarias')
                                             ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #CF9A16;'])
                                             ->label('Qtd Diárias')
                                             ->readOnly()
-                                            // ->hidden(fn(Get $get) => $get('forma_locacao') == 2)
                                             ->required(false),
-
                                         Forms\Components\TextInput::make('valor_total')
                                             ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #D33644;'])
                                             ->label('Valor Total')
@@ -374,8 +365,10 @@ class LocacaoResource extends Resource
                                             ->currencyMask(thousandSeparator: '.', decimalSeparator: ',', precision: 2)
                                             ->required(true)
                                             ->live(onBlur: true)
-                                            ->afterStateUpdated(function ($state, callable $set, Get $get,) {
-                                                $set('valor_total_desconto', ((float)$get('valor_total') - (float)$get('valor_desconto')));
+                                            ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                                $valorTotal = (float) ($get('valor_total') ?? 0);
+                                                $desconto = (float) $state;
+                                                $set('valor_total_desconto', $valorTotal - $desconto);
                                             }),
                                         Forms\Components\TextInput::make('valor_total_desconto')
                                             ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #17863E;'])
@@ -404,11 +397,11 @@ class LocacaoResource extends Resource
                                                     ->afterStateUpdated(
                                                         function (Get $get, Set $set, $state) {
                                                             if ($state == true) {
-                                                                $set('valor_total_financeiro', ((float)$get('valor_total_desconto')));
+                                                                $set('valor_total_financeiro', ((float)($get('valor_total_desconto') ?? 0)));
                                                             } else {
                                                                 $set('valor_parcela_financeiro', 0);
-                                                                $set('parcelas_financeiro', ' ');
-                                                                $set('formaPgmto_financeiro', '');
+                                                                $set('parcelas_financeiro', null);
+                                                                $set('formaPgmto_financeiro', null);
                                                                 $set('valor_total_financeiro', 0);
                                                             }
                                                         }
@@ -426,12 +419,12 @@ class LocacaoResource extends Resource
                                                         function (Get $get, Set $set, $state) {
                                                             if ($state == true) {
                                                                 $set('parcelas_financeiro', 1);
-                                                                $set('valor_parcela_financeiro', ((float)$get('valor_total_desconto')));
+                                                                $set('valor_parcela_financeiro', ((float)($get('valor_total_desconto') ?? 0)));
                                                                 $set('data_vencimento_financeiro', Carbon::now()->format('Y-m-d'));
                                                             } else {
-                                                                $set('valor_parcela_financeiro', '');
-                                                                $set('parcelas_financeiro', ' ');
-                                                                $set('formaPgmto_financeiro', '');
+                                                                $set('valor_parcela_financeiro', null);
+                                                                $set('parcelas_financeiro', null);
+                                                                $set('formaPgmto_financeiro', null);
                                                             }
                                                         }
                                                     )
@@ -452,8 +445,12 @@ class LocacaoResource extends Resource
                                                     ->live(onBlur: true)
                                                     ->afterStateUpdated(
                                                         function (Get $get, Set $set) {
-                                                            $set('valor_parcela_financeiro', ((float)($get('valor_total_financeiro') / $get('parcelas_financeiro'))));
-                                                            $set('data_vencimento_financeiro',  Carbon::now()->addDays($get('proxima_parcela'))->format('Y-m-d'));
+                                                            $valorTotal = (float) ($get('valor_total_financeiro') ?? 0);
+                                                            $parcelas = (int) ($get('parcelas_financeiro') ?? 1);
+                                                            if ($parcelas > 0) {
+                                                                $set('valor_parcela_financeiro', $valorTotal / $parcelas);
+                                                                $set('data_vencimento_financeiro', Carbon::now()->addDays($get('proxima_parcela'))->format('Y-m-d'));
+                                                            }
                                                         }
                                                     )
                                                     ->numeric()
@@ -505,7 +502,6 @@ class LocacaoResource extends Resource
                                             ->options([
                                                 '0' => 'Locado',
                                                 '1' => 'Finalizar',
-
                                             ])
                                             ->colors([
                                                 '0' => 'danger',
@@ -515,9 +511,7 @@ class LocacaoResource extends Resource
                                             ->default(0)
                                             ->label(''),
                                     ])
-
                             ]),
-
                         Forms\Components\Tabs\Tab::make('Assinaturas de Terceiros')
                             ->schema([
                                 Fieldset::make('Assinaturas no Contrato')
@@ -535,28 +529,22 @@ class LocacaoResource extends Resource
                                         Forms\Components\TextInput::make('fiador')
                                             ->label('Fiador')
                                             ->required(false),
-                                            
                                     ]),
-
                                 Fieldset::make('Dados Completo do Fiador')
                                     ->schema([
                                         Forms\Components\Textarea::make('dados_fiador')
                                             ->label('')
                                             ->autosize()
                                             ->columnSpanFull(),
-
-
                                     ]),
                             ]),
-
-
-
                         Forms\Components\Tabs\Tab::make('Ocorrências')
                             ->schema([
                                 Fieldset::make('Ocorrências da Locação')
                                     ->schema([
                                         Repeater::make('ocorrencia')
                                             ->label('Ocorrências')
+                                            ->relationship('ocorrencias')
                                             ->schema([
                                                 Grid::make([
                                                     'xl' => 3,
@@ -572,7 +560,8 @@ class LocacaoResource extends Resource
                                                                 'outro' => 'Outros',
                                                             ]),
                                                         DateTimePicker::make('data_hora'),
-                                                        TextInput::make('valor'),
+                                                        TextInput::make('valor')
+                                                            ->numeric(),
                                                         Textarea::make('descricao')
                                                             ->columnSpan(2)
                                                             ->autosize()
@@ -586,10 +575,49 @@ class LocacaoResource extends Resource
                                             ])
                                             ->columnSpanFull()
                                             ->addActionLabel('Novo')
+                                            ->defaultItems(0)
                                     ]),
                             ]),
                     ])
+                    ->activeTab(1)
+                    ->persistTabInQueryString()
             ]);
+    }
+
+    /**
+     * Recalcular valores da locação
+     */
+    private static function recalcularValores(Get $get, Set $set): void
+    {
+        $veiculoId = $get('veiculo_id');
+        $dataSaida = $get('data_saida');
+        $dataRetorno = $get('data_retorno');
+        $formaLocacao = $get('forma_locacao');
+
+        if (!$veiculoId || !$dataSaida || !$dataRetorno) {
+            return;
+        }
+
+        $veiculo = Veiculo::select('valor_diaria', 'valor_semana')->find($veiculoId);
+        if (!$veiculo) return;
+
+        $dtSaida = Carbon::parse($dataSaida);
+        $dtRetorno = Carbon::parse($dataRetorno);
+        $qtdDias = $dtRetorno->diffInDays($dtSaida);
+
+        $set('qtd_diarias', $qtdDias);
+
+        if ($formaLocacao == 1) {
+            // Diária
+            $valorTotal = $veiculo->valor_diaria * $qtdDias;
+        } else {
+            // Semanal
+            $qtdSemanas = $get('qtd_semanas') ?? 1;
+            $valorTotal = $veiculo->valor_semana * $qtdSemanas;
+        }
+
+        $set('valor_total', $valorTotal);
+        $set('valor_total_desconto', $valorTotal - ((float) ($get('valor_desconto') ?? 0)));
     }
 
     public static function table(Table $table): Table
@@ -610,87 +638,98 @@ class LocacaoResource extends Resource
                 Tables\Columns\TextColumn::make('id')
                     ->sortable()
                     ->searchable()
-                    ->label('ID'),
+                    ->label('ID')
+                    ->toggleable(),
 
                 Tables\Columns\TextColumn::make('cliente.nome')
                     ->sortable()
                     ->searchable()
-                    ->label('Cliente'),
+                    ->label('Cliente')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('veiculo.modelo')
                     ->sortable()
                     ->searchable()
-                    ->label('Veículo'),
+                    ->label('Veículo')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('veiculo.placa')
                     ->searchable()
-                    ->label('Placa'),
+                    ->label('Placa')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('data_saida')
                     ->label('Data Saída')
-                    ->date('d/m/Y'),
+                    ->date('d/m/Y')
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('hora_saida')
                     ->alignCenter()
-                    ->date('H:m')
+                    ->date('H:i')
                     ->sortable()
-                    ->label('Hora Saída'),
+                    ->label('Hora Saída')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('data_retorno')
                     ->badge()
                     ->label('Data Retorno')
                     ->date('d/m/Y')
+                    ->sortable()
                     ->color(static function ($state): string {
-                        $hoje = Carbon::today();
-                        $dataRetorno = Carbon::parse($state);
-                        $qtd_dias = $hoje->diffInDays($dataRetorno, false);
+                        if (!$state) return 'secondary';
 
-                        if ($qtd_dias <= 3 && $qtd_dias >= 0) {
-                            return 'warning';
-                        }
+                        try {
+                            $hoje = Carbon::today();
+                            $dataRetorno = Carbon::parse($state);
+                            $qtdDias = $hoje->diffInDays($dataRetorno, false);
 
-                        if ($qtd_dias < 0) {
-                            return 'danger';
-                        }
+                            if ($qtdDias <= 3 && $qtdDias >= 0) {
+                                return 'warning';
+                            }
 
-                        if ($qtd_dias > 3) {
+                            if ($qtdDias < 0) {
+                                return 'danger';
+                            }
+
                             return 'success';
+                        } catch (\Exception $e) {
+                            return 'secondary';
                         }
-                    }),
+                    })
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('hora_retorno')
                     ->alignCenter()
-                    ->date('H:m')
-                    ->label('Hora Retorno'),
-                Tables\Columns\TextColumn::make('Km_Percorrido')
+                    ->date('H:i')
+                    ->label('Hora Retorno')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('km_percorrido')
                     ->label('Km Total')
                     ->getStateUsing(function (Locacao $record): int {
-
                         return ($record->km_retorno - $record->km_saida);
-                    }),
+                    })
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('qtd_diarias')
-                    ->label('Qtd Diárias'),
+                    ->label('Qtd Diárias')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('valor_total_desconto')
                     ->summarize(Sum::make()->money('BRL')->label('Total'))
                     ->money('BRL')
-                    ->label('Valor Total'),
+                    ->label('Valor Total')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('status')
-                    ->summarize(Count::make())
+                    ->summarize(Count::make()->label('Total'))
                     ->Label('Status')
                     ->badge()
                     ->alignCenter()
                     ->color(fn(string $state): string => match ($state) {
                         '0' => 'danger',
                         '1' => 'success',
+                        default => 'secondary'
                     })
-                    ->formatStateUsing(function ($state) {
-                        if ($state == 0) {
-                            return 'Locado';
-                        }
-                        if ($state == 1) {
-                            return 'Finalizada';
-                        }
-                    }),
+                    ->formatStateUsing(fn($state) => $state == 0 ? 'Locado' : 'Finalizada')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -698,59 +737,71 @@ class LocacaoResource extends Resource
                 Filter::make('Locados')
                     ->query(fn(Builder $query): Builder => $query->where('status', false))
                     ->default(1),
-                SelectFilter::make('cliente')->searchable()->relationship('cliente', 'nome'),
-                SelectFilter::make('veiculo')->searchable()->relationship('veiculo', 'placa'),
+                SelectFilter::make('cliente')
+                    ->searchable()
+                    ->relationship('cliente', 'nome')
+                    ->preload()
+                    ->multiple(),
+                SelectFilter::make('veiculo')
+                    ->searchable()
+                    ->relationship('veiculo', 'placa')
+                    ->preload()
+                    ->multiple(),
                 Tables\Filters\Filter::make('datas')
                     ->form([
                         DatePicker::make('data_saida_de')
                             ->label('Saída de:'),
                         DatePicker::make('data_saida_ate')
-                            ->label('Saída ate:'),
+                            ->label('Saída até:'),
                     ])
                     ->query(function ($query, array $data) {
                         return $query
                             ->when(
-                                $data['data_saida_de'],
+                                $data['data_saida_de'] ?? null,
                                 fn($query) => $query->whereDate('data_saida', '>=', $data['data_saida_de'])
                             )
                             ->when(
-                                $data['data_saida_ate'],
+                                $data['data_saida_ate'] ?? null,
                                 fn($query) => $query->whereDate('data_saida', '<=', $data['data_saida_ate'])
                             );
                     })
-
             ])
             ->actions([
-                // Tables\Actions\Action::make('Imprimir')
-                //     ->url(fn(Locacao $record): string => route('imprimirLocacao', $record))
-                //     ->label('Contrato 1')
-                //     ->openUrlInNewTab(),
-                // Tables\Actions\Action::make('Imprimir')
-                //     ->url(fn(Locacao $record): string => route('imprimirLocacao2', $record))
-                //     ->label('Contrato 2')
-                //     ->openUrlInNewTab(),
+                Tables\Actions\Action::make('Imprimir')
+                    ->url(fn(Locacao $record): string => route('imprimirLocacao', $record))
+                    ->label('Contrato 1')
+                    ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make()
                     ->modalHeading('Editar locação')
                     ->after(function ($data) {
-                        if ($data['status'] == 1) {
-                            $veiculo = Veiculo::find($data['veiculo_id']);
-                            $veiculo->km_atual = $data['km_retorno'];
-                            $veiculo->status_locado = 0;
-                            $veiculo->save();
+                        if (isset($data['status']) && $data['status'] == 1 && isset($data['veiculo_id']) && isset($data['km_retorno'])) {
+                            DB::table('veiculos')
+                                ->where('id', $data['veiculo_id'])
+                                ->update([
+                                    'km_atual' => $data['km_retorno'],
+                                    'status_locado' => 0
+                                ]);
                         }
                     }),
                 Tables\Actions\DeleteAction::make()
                     ->before(function ($record) {
-                        $veiculo = Veiculo::find($record->veiculo_id);
-                        $veiculo->status_locado = 0;
-                        $veiculo->save();
+                        if ($record->veiculo_id) {
+                            DB::table('veiculos')
+                                ->where('id', $record->veiculo_id)
+                                ->update(['status_locado' => 0]);
+                        }
                     }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    //  Tables\Actions\DeleteBulkAction::make(),
+                    // Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->deferLoading()
+            ->poll('60s')
+            ->striped()
+            ->defaultPaginationPageOption(25)
+            ->paginated([10, 25, 50, 100]);
     }
 
     public static function getPages(): array
@@ -758,5 +809,24 @@ class LocacaoResource extends Resource
         return [
             'index' => Pages\ManageLocacaos::route('/'),
         ];
+    }
+
+    /**
+     * Limpar cache quando veículo é alterado
+     */
+    public static function clearVeiculoCache(): void
+    {
+        Cache::forget(static::$cacheKeyVeiculos . 'create');
+        Cache::forget(static::$cacheKeyVeiculos . 'edit');
+    }
+
+    /**
+     * Limpar cache de estados e cidades
+     */
+    public static function clearEstadoCache(): void
+    {
+        Cache::forget(static::$cacheKeyEstados);
+        // Limpar cache de cidades por estado (pode ser mais específico se necessário)
+        Cache::forgetPrefix('cidades_estado_');
     }
 }
