@@ -12,8 +12,6 @@ class Locacao extends Model
     use HasFactory, LogsActivity;
 
     protected $fillable = [
-
-
         'cliente_id',
         'veiculo_id',
         'data_saida',
@@ -31,7 +29,7 @@ class Locacao extends Model
         'status_financeiro',
         'status_pago_financeiro',
         'parcelas_financeiro',
-        'formaPgmto_financeiro',
+        'forma_pgmto_id',
         'valor_parcela_financeiro',
         'valor_total_financeiro',
         'data_vencimento_financeiro',
@@ -50,6 +48,7 @@ class Locacao extends Model
     protected $casts = [
         'ocorrencia' => 'array',
     ];
+    
     public function Cliente()
     {
         return $this->belongsTo(Cliente::class);
@@ -65,6 +64,16 @@ class Locacao extends Model
         return $this->hasMany(ocorrenciaLocacao::class);
     }
 
+    public function contasReceber()
+    {
+        return $this->hasMany(ContasReceber::class);
+    }
+
+    public function formaPgmto()
+    {
+        return $this->belongsTo(FormaPagamento::class);
+    }
+
     public function getKmPercorridoAttribute()
     {
         return $this->km_retorno - $this->km_saida;
@@ -74,6 +83,5 @@ class Locacao extends Model
     {
         return LogOptions::defaults()
             ->logOnly(['*']);
-        // Chain fluent methods for configuration options
     }
 }

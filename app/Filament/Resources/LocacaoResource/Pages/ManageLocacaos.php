@@ -35,7 +35,8 @@ class ManageLocacaos extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Novo')
+                ->label('Adicionar Locação')
+                ->icon('heroicon-o-plus')
                 ->modalHeading('Criar Locação')                
                 ->after(function ($data, $record) {
                     // 1. Atualização do status do veículo em uma única query
@@ -67,9 +68,10 @@ class ManageLocacaos extends ManageRecords
         for ($cont = 0; $cont < $data['parcelas_financeiro']; $cont++) {
             $parcelas[] = [
                 'cliente_id' => $data['cliente_id'],
+                'locacao_id' => $record->id,
                 'valor_total' => $data['valor_total_financeiro'],
                 'parcelas' => $data['parcelas_financeiro'],
-                'formaPgmto' => $data['formaPgmto_financeiro'],
+                'forma_pgmto_id' => $data['forma_pgmto_id'],
                 'ordem_parcela' => $cont + 1,
                 'data_vencimento' => $vencimentos->copy(),
                 'valor_recebido' => 0.00,
@@ -95,9 +97,10 @@ class ManageLocacaos extends ManageRecords
             // 1. Cria a conta a receber
             $contaReceber = ContasReceber::create([
                 'cliente_id' => $data['cliente_id'],
+                'locacao_id' => $record->id,
                 'valor_total' => $data['valor_total_financeiro'],
                 'parcelas' => $data['parcelas_financeiro'],
-                'formaPgmto' => $data['formaPgmto_financeiro'],
+                'forma_pgmto_id' => $data['forma_pgmto_id'],
                 'ordem_parcela' => 1,
                 'data_vencimento' => $data['data_vencimento_financeiro'],
                 'data_recebimento' => $data['data_vencimento_financeiro'],
@@ -114,8 +117,9 @@ class ManageLocacaos extends ManageRecords
             // 3. Cria registro no fluxo de caixa
             FluxoCaixa::create([
                 'valor' => $data['valor_total_financeiro'],
+                'locacao_id' => $record->id,
                 'tipo' => 'CREDITO',
-                'obs' => 'Recebimento da conta do cliente ' . $clienteNome,
+                'obs' => 'Recebimento da conta do cliente ' . $clienteNome . ' - Forma de Pagamento: ' . ($record->formaPgmto->nome ?? 'N/A'),
             ]);
         });
     }

@@ -13,6 +13,8 @@ class FluxoCaixa extends Model
 
     protected $fillable = [
         'valor',
+        'locacao_id',
+        'contas_receber_id',
         'tipo',
         'obs',
        

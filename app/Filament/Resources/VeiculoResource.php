@@ -184,6 +184,9 @@ class VeiculoResource extends Resource
                 Tables\Columns\TextColumn::make('valor_diaria')
                     ->label('Valor Diária')
                     ->money('BRL'),
+                Tables\Columns\TextColumn::make('valor_semana')
+                    ->label('Valor Semanal')
+                    ->money('BRL'),
                 Tables\Columns\TextColumn::make('status')
                     ->Label('Status')
                     ->badge()

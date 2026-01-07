@@ -6,7 +6,9 @@ use App\Filament\Exports\LocacaoExporter;
 use App\Filament\Resources\LocacaoResource\Pages;
 use App\Filament\Resources\LocacaoResource\RelationManagers\OcorrenciaRelationManager;
 use App\Models\Cliente;
+use App\Models\ContasReceber;
 use App\Models\Estado;
+use App\Models\FluxoCaixa;
 use App\Models\Locacao;
 use App\Models\Veiculo;
 use Carbon\Carbon;
@@ -45,7 +47,6 @@ use Laravel\SerializableClosure\Serializers\Native;
 use Leandrocfe\FilamentPtbrFormFields\Money;
 use Illuminate\Support\Str;
 use Saade\FilamentAutograph\Forms\Components\SignaturePad;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class LocacaoResource extends Resource
@@ -57,11 +58,6 @@ class LocacaoResource extends Resource
     protected static ?string $navigationLabel = 'Locações';
 
     protected static ?string $navigationGroup = 'Locar';
-
-    // Cache keys
-    protected static string $cacheKeyEstados = 'estados_list';
-    protected static string $cacheKeyVeiculos = 'veiculos_list_';
-    protected static int $cacheDuration = 3600; // 1 hora
 
     // Eager loading para evitar consultas N+1
     protected static function getEagerLoadRelations(): array
@@ -127,9 +123,7 @@ class LocacaoResource extends Resource
                                                                     ->required()
                                                                     ->default(33)
                                                                     ->options(function () {
-                                                                        return Cache::remember(static::$cacheKeyEstados, static::$cacheDuration, function () {
-                                                                            return Estado::all()->pluck('nome', 'id')->toArray();
-                                                                        });
+                                                                        return Estado::all()->pluck('nome', 'id')->toArray();
                                                                     })
                                                                     ->live(),
                                                                 Forms\Components\Select::make('cidade_id')
@@ -143,11 +137,8 @@ class LocacaoResource extends Resource
                                                                         if (!$estadoId) {
                                                                             return [];
                                                                         }
-                                                                        $cacheKey = 'cidades_estado_' . $estadoId;
-                                                                        return Cache::remember($cacheKey, static::$cacheDuration, function () use ($estadoId) {
-                                                                            $estado = Estado::with('cidade:id,nome,estado_id')->find($estadoId);
-                                                                            return $estado ? $estado->cidade->pluck('nome', 'id')->toArray() : [];
-                                                                        });
+                                                                        $estado = Estado::with('cidade:id,nome,estado_id')->find($estadoId);
+                                                                        return $estado ? $estado->cidade->pluck('nome', 'id')->toArray() : [];
                                                                     })
                                                                     ->live(),
                                                                 Forms\Components\TextInput::make('telefone_1')
@@ -180,9 +171,7 @@ class LocacaoResource extends Resource
                                                                     ->searchable()
                                                                     ->label('UF - Expedidor')
                                                                     ->options(function () {
-                                                                        return Cache::remember(static::$cacheKeyEstados, static::$cacheDuration, function () {
-                                                                            return Estado::all()->pluck('nome', 'id')->toArray();
-                                                                        });
+                                                                        return Estado::all()->pluck('nome', 'id')->toArray();
                                                                     }),
                                                                 FileUpload::make('img_cnh')
                                                                     ->columnSpan([
@@ -360,6 +349,7 @@ class LocacaoResource extends Resource
                                             ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #3668D3;'])
                                             ->label('Desconto')
                                             ->numeric()
+                                            ->default(0)
                                             ->prefix('R$')
                                             ->inputMode('decimal')
                                             ->currencyMask(thousandSeparator: '.', decimalSeparator: ',', precision: 2)
@@ -456,18 +446,13 @@ class LocacaoResource extends Resource
                                                     ->numeric()
                                                     ->label('Qtd Parcelas')
                                                     ->required(fn(Get $get): bool => $get('status_financeiro')),
-                                                Forms\Components\Select::make('formaPgmto_financeiro')
+                                                Forms\Components\Select::make('forma_pgmto_id')
                                                     ->hidden(fn(Get $get): bool => !$get('status_financeiro'))
                                                     ->disabled(fn(string $context): bool => $context === 'edit')
-                                                    ->default(4)
+                                                    ->default(1)
                                                     ->label('Forma de Pagamento')
                                                     ->required(fn(Get $get): bool => $get('status_financeiro'))
-                                                    ->options([
-                                                        1 => 'Dinheiro',
-                                                        2 => 'Pix',
-                                                        3 => 'Cartão',
-                                                        4 => 'Boleto',
-                                                    ]),
+                                                    ->relationship('formaPgmto', 'nome'),
                                                 Forms\Components\DatePicker::make('data_vencimento_financeiro')
                                                     ->hidden(fn(Get $get): bool => !$get('status_financeiro'))
                                                     ->disabled(fn(string $context): bool => $context === 'edit')
@@ -703,10 +688,7 @@ class LocacaoResource extends Resource
                     ->getStateUsing(function (Locacao $record): int {
                         return ($record->km_retorno - $record->km_saida);
                     })
-                    ->toggleable(),
-                Tables\Columns\TextColumn::make('qtd_diarias')
-                    ->label('Qtd Diárias')
-                    ->toggleable(),
+                    ->toggleable(),               
                 Tables\Columns\TextColumn::make('valor_total_desconto')
                     ->summarize(Sum::make()->money('BRL')->label('Total'))
                     ->money('BRL')
@@ -773,7 +755,7 @@ class LocacaoResource extends Resource
                     ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make()
                     ->modalHeading('Editar locação')
-                    ->after(function ($data) {
+                    ->after(function ($data) {                        
                         if (isset($data['status']) && $data['status'] == 1 && isset($data['veiculo_id']) && isset($data['km_retorno'])) {
                             DB::table('veiculos')
                                 ->where('id', $data['veiculo_id'])
@@ -789,7 +771,13 @@ class LocacaoResource extends Resource
                             DB::table('veiculos')
                                 ->where('id', $record->veiculo_id)
                                 ->update(['status_locado' => 0]);
+                        
                         }
+                        if($record->status_financeiro == true ) {
+                            ContasReceber::where('locacao_id', $record->id)->delete();
+                            FluxoCaixa::where('locacao_id', $record->id)->delete();
+                        }
+                        
                     }),
             ])
             ->bulkActions([
@@ -798,8 +786,8 @@ class LocacaoResource extends Resource
                 ]),
             ])
             ->deferLoading()
-            ->poll('60s')
-            ->striped()
+           //>poll('60s')
+            ->striped() // Linhas listradas            
             ->defaultPaginationPageOption(25)
             ->paginated([10, 25, 50, 100]);
     }
@@ -809,24 +797,5 @@ class LocacaoResource extends Resource
         return [
             'index' => Pages\ManageLocacaos::route('/'),
         ];
-    }
-
-    /**
-     * Limpar cache quando veículo é alterado
-     */
-    public static function clearVeiculoCache(): void
-    {
-        Cache::forget(static::$cacheKeyVeiculos . 'create');
-        Cache::forget(static::$cacheKeyVeiculos . 'edit');
-    }
-
-    /**
-     * Limpar cache de estados e cidades
-     */
-    public static function clearEstadoCache(): void
-    {
-        Cache::forget(static::$cacheKeyEstados);
-        // Limpar cache de cidades por estado (pode ser mais específico se necessário)
-        Cache::forgetPrefix('cidades_estado_');
     }
 }

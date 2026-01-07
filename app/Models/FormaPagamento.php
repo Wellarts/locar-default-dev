@@ -15,4 +15,14 @@ class FormaPagamento extends Model
     {
         return $this->hasMany(OrdemServico::class);
     }
+
+    public function contasReceber()
+    {
+        return $this->hasMany(ContasReceber::class);
+    }
+
+    public function locacao()
+    {
+        return $this->hasMany(Locacao::class);
+    }
 }
