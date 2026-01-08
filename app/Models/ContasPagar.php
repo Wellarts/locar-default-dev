@@ -15,7 +15,7 @@ class ContasPagar extends Model
         'fornecedor_id',
         'parcelas',
         'ordem_parcela',
-        'formaPgmto',
+        'forma_pgmto_id',
         'data_vencimento',
         'data_pagamento',
         'status',
@@ -34,7 +34,7 @@ class ContasPagar extends Model
         'valor_total' => 'decimal:2',
         'valor_parcela' => 'decimal:2',
         'valor_pago' => 'decimal:2',
-        'formaPgmto' => 'integer',
+       
     ];
 
     // Use eager loading por padrão para relações frequentemente usadas
@@ -48,6 +48,11 @@ class ContasPagar extends Model
     public function categoria()
     {
         return $this->belongsTo(Categoria::class);
+    }
+
+    public function formaPgmto()
+    {
+        return $this->belongsTo(FormaPagamento::class);
     }
 
     public function fluxoCaixa()
@@ -80,15 +85,5 @@ class ContasPagar extends Model
                     ->where('status', false);
     }
 
-    // Acessor para forma de pagamento em texto
-    public function getFormaPagamentoTextoAttribute(): string
-    {
-        $formas = [
-            1 => 'Dinheiro',
-            2 => 'Pix',
-            3 => 'Cartão',
-            4 => 'Boleto',
-        ];
-        return $formas[$this->formaPgmto] ?? 'Desconhecido';
-    }
+    
 }

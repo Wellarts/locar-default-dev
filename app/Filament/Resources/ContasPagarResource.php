@@ -26,8 +26,8 @@ class ContasPagarResource extends Resource
 {
     protected static ?string $model = ContasPagar::class;
     protected static ?string $navigationIcon = 'heroicon-o-calculator';
-    protected static ?string $title = 'Contas a Pagar';
-    protected static ?string $navigationLabel = 'Contas a Pagar';
+    protected static ?string $title = 'Pagamentos';
+    protected static ?string $navigationLabel = 'Pagamentos';
     protected static ?string $navigationGroup = 'Financeiro';
 
     public static function form(Form $form): Form
@@ -107,15 +107,12 @@ class ContasPagarResource extends Resource
                     }),
 
                 // Forma de Pagamento
-                Forms\Components\Select::make('formaPgmto')
+                Forms\Components\Select::make('forma_pgmto_id')
                     ->label('Forma de Pagamento')
-                    ->required()
-                    ->options([
-                        1 => 'Dinheiro',
-                        2 => 'Pix',
-                        3 => 'Cartão',
-                        4 => 'Boleto',
-                    ]),
+                    ->required(false)
+                    ->relationship('formaPgmto', 'nome')
+                    ->searchable()
+                    ->preload(),
 
                 Forms\Components\Hidden::make('ordem_parcela')
                     ->default('1'),
@@ -334,7 +331,7 @@ class ContasPagarResource extends Resource
                                     'valor' => $record->valor_parcela * -1,
                                     'contas_pagar_id' => $record->id,
                                     'tipo'  => 'DEBITO',
-                                    'obs'   => 'Pagamento da conta do fornecedor ' . $record->fornecedor->nome . ' - Forma de Pagamento: ' . self::getFormaPagamentoTexto($record->formaPgmto),
+                                    'obs' => 'Pagamento da conta do fornecedor ' . $record->fornecedor->nome . ' - Forma de Pagamento: ' . ($record->formaPgmto ? $record->formaPgmto->nome : 'N/A'),
                                 ]);
                             }
                         });
@@ -378,7 +375,8 @@ class ContasPagarResource extends Resource
                                         'valor' => $record->valor_parcela * -1,
                                         'contas_pagar_id' => $record->id,
                                         'tipo' => 'DEBITO',
-                                        'obs' => 'Pagamento da conta do fornecedor ' . $record->fornecedor->nome . ' - Forma de Pagamento: ' . self::getFormaPagamentoTexto($record->formaPgmto),
+                                        'obs' => 'Pagamento da conta do fornecedor ' . $record->fornecedor->nome . ' - Forma de Pagamento: ' . ($record->formaPgmto ? $record->formaPgmto->nome : 'N/A'),
+                                        
                                     ]);
                                 }
                             });
@@ -414,14 +412,5 @@ class ContasPagarResource extends Resource
         ];
     }
 
-    private static function getFormaPagamentoTexto($formaPgmto): string
-    {
-        $formas = [
-            1 => 'Dinheiro',
-            2 => 'Pix',
-            3 => 'Cartão',
-            4 => 'Boleto',
-        ];
-        return $formas[$formaPgmto] ?? 'Desconhecido';
-    }
+    
 }

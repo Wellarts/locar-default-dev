@@ -13,14 +13,15 @@ use Illuminate\Support\Facades\DB;
 class ManageContasPagars extends ManageRecords
 {
     protected static string $resource = ContasPagarResource::class;
-    protected static ?string $title = 'Contas a Pagar';
+    protected static ?string $title = 'Pagamentos';
 
     protected function getHeaderActions(): array
     {
         return [
             Actions\CreateAction::make()
-                ->label('Lançar Conta')
-                ->modalHeading('Criar Conta a Pagar')
+                ->label('Adicionar')
+                ->icon('heroicon-o-plus')
+                ->modalHeading('Criar Pagamento')
                 ->after(function ($data, $record) {
                     // Use transação para garantir consistência
                     DB::transaction(function () use ($data, $record) {
@@ -81,22 +82,9 @@ class ManageContasPagars extends ManageRecords
                 'valor' => $record->valor_total * -1,
                 'contas_pagar_id' => $record->id,
                 'tipo'  => 'DEBITO',
-                'obs'   => 'Pagamento da conta do fornecedor ' . $record->fornecedor->nome . ' - Forma de Pagamento: ' . $this->getFormaPagamentoTexto($record->formaPgmto),
-            ]);
+                'obs' => 'Pagamento da conta do fornecedor ' . $record->fornecedor->nome . ' - Forma de Pagamento: ' . ($record->formaPgmto ? $record->formaPgmto->nome : 'N/A'),            ]);
         }
     }
 
-    /**
-     * Retorna o texto da forma de pagamento
-     */
-    private function getFormaPagamentoTexto($formaPgmto): string
-    {
-        $formas = [
-            1 => 'Dinheiro',
-            2 => 'Pix',
-            3 => 'Cartão',
-            4 => 'Boleto',
-        ];
-        return $formas[$formaPgmto] ?? 'Desconhecido';
-    }
+   
 }

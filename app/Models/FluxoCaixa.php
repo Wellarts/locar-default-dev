@@ -15,6 +15,7 @@ class FluxoCaixa extends Model
         'valor',
         'locacao_id',
         'contas_receber_id',
+        'contas_pagar_id',
         'tipo',
         'obs',
        
