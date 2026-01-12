@@ -14,6 +14,7 @@ class ContasPagar extends Model
     protected $fillable = [
         'fornecedor_id',
         'parcelas',
+        'despesa_id',
         'ordem_parcela',
         'forma_pgmto_id',
         'data_vencimento',

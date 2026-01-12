@@ -19,6 +19,9 @@ class CustoVeiculo extends Model
         'data',
         'descricao',
         'valor',
+        'financeiro',
+        'pago',
+        'parcelas',
         'categoria_id',
 
 

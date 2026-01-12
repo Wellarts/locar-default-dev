@@ -201,76 +201,53 @@ class ContasPagarResource extends Resource
                     ->modalHeading('Confirmar exportação?')
             ])
             ->columns([
+                Tables\Columns\TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable()
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('despesa_id')
+                    ->label('Despesa ID')
+                    ->sortable()
+                    ->searchable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('fornecedor.nome')
                     ->sortable()
                     ->searchable()
                     ->toggleable(),
-
                 Tables\Columns\TextColumn::make('ordem_parcela')
                     ->sortable()
                     ->alignCenter()
                     ->label('Parcela Nº')
                     ->toggleable(),
-
                 Tables\Columns\TextColumn::make('data_vencimento')
                     ->label('Vencimento')
                     ->date('d/m/Y')
                     ->badge()
                     ->sortable()
                     ->color(fn($record) => $record->status ? 'success' : ($record->data_vencimento < now() ? 'danger' : 'warning'))
-                    ->toggleable(),
-
-                Tables\Columns\TextColumn::make('valor_total')
-                    ->label('Valor Total')
-                    ->money('BRL')
-                    ->toggleable(),
-
-                Tables\Columns\TextColumn::make('categoria.nome')
-                    ->sortable()
-                    ->searchable()
-                    ->toggleable(),
-
-                Tables\Columns\SelectColumn::make('formaPgmto')
-                    ->label('Forma de Pagamento')
-                    ->disabled()
-                    ->options([
-                        1 => 'Dinheiro',
-                        2 => 'Pix',
-                        3 => 'Cartão',
-                        4 => 'Boleto',
-                    ])
-                    ->toggleable(),
-
+                    ->toggleable(), 
                 Tables\Columns\TextColumn::make('valor_parcela')
                     ->label('Valor Parcela')
                     ->money('BRL')
                     ->summarize(Sum::make()->money('BRL')->label('Total'))
-                    ->toggleable(),
-
+                    ->toggleable(),  
                 Tables\Columns\IconColumn::make('status')
                     ->label('Pago')
                     ->icon(fn($record) => $record->status ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
                     ->color(fn($record) => $record->status ? 'success' : 'danger')
                     ->toggleable(),
-
                 Tables\Columns\TextColumn::make('valor_pago')
                     ->label('Valor Pago')
                     ->money('BRL')
                     ->summarize(Sum::make()->money('BRL')->label('Pago'))
-                    ->toggleable(),
-
-                Tables\Columns\TextColumn::make('data_pagamento')
-                    ->label('Data Pagamento')
-                    ->date('d/m/Y')
-                    ->badge()
-                    ->color('warning')
-                    ->toggleable(),
-
+                    ->toggleable(), 
+               Tables\Columns\TextColumn::make('formaPgmto.nome')
+                    ->label('Forma de Pagamento')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
                 Tables\Columns\TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()

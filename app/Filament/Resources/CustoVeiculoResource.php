@@ -6,7 +6,9 @@ use App\Filament\Exports\CustoVeiculoExporter;
 use App\Filament\Resources\CustoVeiculoResource\Pages;
 use App\Filament\Resources\CustoVeiculoResource\RelationManagers;
 use App\Models\Categoria;
+use App\Models\ContasPagar;
 use App\Models\CustoVeiculo;
+use App\Models\FluxoCaixa;
 use App\Models\Fornecedor;
 use App\Models\Veiculo;
 use Filament\Tables\Actions\ExportAction;
@@ -14,6 +16,8 @@ use Filament\Actions\Exports\Enums\ExportFormat;
 use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Form;
+use Filament\Infolists\Components\Tabs\Tab;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\Summarizers\Sum;
@@ -81,6 +85,32 @@ class CustoVeiculoResource extends Resource
                     ->prefix('R$')
                     ->inputMode('decimal')
                     ->required(),
+                Forms\Components\Section::make('Financeiro')
+                    ->description(fn($context) => $context === 'create' ? 'Opções para lançar a despesa no financeiro.' : 'As opções financeiras em modo de parcelamento não podem ser editadas. Para alterar, exclua e crie uma nova parcelas. Caso a situação do pagamento foi "Pago", o valor seja ajustado automaticamente no fluxo de caixa.')
+                    ->disabled(fn($context) => $context === 'edit')
+                    ->columns(3)
+                    ->schema([
+                        Forms\Components\Toggle::make('financeiro')
+                            ->label('Deseja lançar no financeiro?')
+                            ->inline(false)
+                            ->live()
+                            ->default(fn($record) => $record && FluxoCaixa::where('despesa_id', $record->id)->exists()),
+                        Forms\Components\ToggleButtons::make('pago')
+                            ->label('Situação do pagamento')
+                            ->options([
+                                'pago' => 'Pago',
+                                'a_pagar' => 'A Pagar',
+                            ])
+                            ->default('pago')
+                            ->grouped()
+                            ->live()
+                            ->hidden(fn($get) => !$get('financeiro')),
+                        Forms\Components\TextInput::make('parcelas')
+                            ->label('Qtd de Parcelas')
+                            ->default(1)
+                            ->live()
+                            ->visible(fn($get) => $get('financeiro') == true && $get('pago') === 'a_pagar'),
+                    ]),
             ]);
     }
 
@@ -99,6 +129,10 @@ class CustoVeiculoResource extends Resource
                     ->modalHeading('Confirmar exportação?')
             ])
             ->columns([
+                Tables\Columns\TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable()
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('fornecedor.nome')
                     ->label('Fornecedor')
                     ->searchable()
@@ -106,17 +140,11 @@ class CustoVeiculoResource extends Resource
                 Tables\Columns\TextColumn::make('veiculo.modelo')
                     ->label('Veículo')
                     ->searchable()
-                    ->sortable(),                    
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('veiculo.placa')
                     ->label('Placa')
                     ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('categoria.nome')
-                    ->label('Categoria')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('km_atual')
-                    ->label('Km Atual'),
+                    ->sortable(),   
                 Tables\Columns\TextColumn::make('data')
                     ->sortable()
                     ->date('d/m/Y'),
@@ -135,7 +163,17 @@ class CustoVeiculoResource extends Resource
             ])
             ->filters([
                 SelectFilter::make('fornecedor')->searchable()->relationship('fornecedor', 'nome'),
-                SelectFilter::make('veiculo')->searchable()->relationship('veiculo', 'placa')->label('Veículo - (Placa)'),
+                SelectFilter::make('veiculo_id')
+                    ->label('Veículo - (Modelo/Placa)')
+                    ->searchable()
+                    ->options(
+                        fn() => Veiculo::query()
+                            ->orderBy('modelo')
+                            ->orderBy('placa')
+                            ->get()
+                            ->mapWithKeys(fn($v) => [$v->id => "{$v->modelo} {$v->placa}"])
+                            ->toArray()
+                    ),
                 Tables\Filters\Filter::make('datas')
                     ->form([
                         DatePicker::make('data_de')
@@ -157,12 +195,72 @@ class CustoVeiculoResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->modalHeading('Editar custo veículo'),
-                Tables\Actions\DeleteAction::make(),
+                    ->modalHeading('Editar custo veículo')
+                    ->after(function (Model $record) {
+                        if (($record->financeiro == true) && ($record->pago === 'pago')) {
+                            // Ao editar uma despesa, atualizar também o lançamento no fluxo de caixa
+                            $fluxo = FluxoCaixa::where('despesa_id', $record->id)->first();
+                            if ($fluxo) {
+                                $valor = $record->valor;
+                                if (is_string($valor)) {
+                                    $valor = str_replace(['R$', ' ', '.'], ['', '', ''], $valor);
+                                    $valor = str_replace(',', '.', $valor);
+                                    $valor = (float) $valor;
+                                }
+
+                                $fluxo->valor = ($valor * -1);
+                                $fluxo->obs = ('Despesa veículo: ' . ($record->veiculo->modelo ?? '') . ' - ' . ($record->veiculo->placa ?? '') . ' - ' . ($record->descricao ?? ''));
+                                $fluxo->save();
+                                Notification::make()
+                                    ->title('Sucesso')
+                                    ->body('Lançamento no fluxo de caixa atualizado com sucesso.')
+                                    ->persistent()
+                                    ->success()
+                                    ->send();
+                            }
+                        } elseif (($record->financeiro == true) && ($record->pago === 'a_pagar')) {
+                            Notification::make()
+                                ->title('Atenção')
+                                ->body('As parcelas não foram atualizadas. Por favor, exclua e crie uma novas parcelas se necessário.')
+                                ->persistent()
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
+                Tables\Actions\DeleteAction::make()
+                    ->after(function (Model $record) {
+                        if (($record->financeiro == true) && ($record->pago === 'pago')) {
+                            // Ao excluir uma despesa, excluir também o lançamento no fluxo de caixa
+                            $fluxo = FluxoCaixa::where('despesa_id', $record->id)->first();
+                            if ($fluxo) {
+                                $fluxo->delete();
+                            }
+                        } elseif (($record->financeiro == true) && ($record->pago === 'a_pagar')) {
+                            // Ao excluir uma despesa, excluir também os lançamentos no fluxo de caixa relacionados às parcelas
+                            $parcelas = ContasPagar::where('despesa_id', $record->id)->where('status', false)->get();
+                            foreach ($parcelas as $parcela) {
+                                $parcela = ContasPagar::find($parcela->id);
+                                if ($parcela) {
+                                    $parcela->delete();
+                                }
+                            }
+                            Notification::make()
+                                ->title('Sucesso')
+                                ->body('Apenas as parcelas em aberto foram excluídas. As parcelas já pagas não foram excluídas, nem seus lançamentos no fluxo de caixa.')
+                                ->persistent()
+                                ->success()
+                                ->send();
+                        } else {
+                            // Não há lançamento financeiro para excluir
+
+                        }
+                    }),
+
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                    //  Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

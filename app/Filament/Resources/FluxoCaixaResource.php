@@ -10,6 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\Summarizers\Sum;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -72,10 +73,21 @@ class FluxoCaixaResource extends Resource
                     ->money('BRL'),
                 Tables\Columns\TextColumn::make('obs')
                     ->label('Descrição')
+                    ->limit(50)
+                    ->tooltip(function (TextColumn $column): ?string {
+                        $state = $column->getState();
+
+                        if (strlen($state) <= $column->getCharacterLimit()) {
+                            return null;
+                        }
+
+                        // Only render the tooltip if the column content exceeds the length limit.
+                        return $state;
+                    })
                     ->searchable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Data Hora')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 // ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('updated_at')
@@ -83,31 +95,24 @@ class FluxoCaixaResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filters([
-                Filter::make('CREDITO')
-                    ->label('Crédito')
-                    ->query(fn(Builder $query): Builder => $query->where('tipo', 'CREDITO')),
-                Filter::make('DEBITO')
-                    ->label('Débito')
-                    ->query(fn(Builder $query): Builder => $query->where('tipo', 'DEBITO')),
+             ->filters([
                 Tables\Filters\Filter::make('created_at')
                     ->form([
-                        Forms\Components\DatePicker::make('data_de')
-                            ->label('Data de:'),
-                        Forms\Components\DatePicker::make('data_ate')
-                            ->label('Data até:'),
+                        Forms\Components\DatePicker::make('created_from')
+                            ->label('Data Inicial')
+                            ->default(now()->toDateString()),
+                        Forms\Components\DatePicker::make('created_until')
+                            ->label('Data Final')
+                            ->default(now()->toDateString()),
                     ])
-                    ->query(function ($query, array $data) {
-                        return $query
-                            ->when(
-                                $data['data_de'],
-                                fn($query) => $query->whereDate('created_at', '>=', $data['data_de'])
-                            )
-                            ->when(
-                                $data['data_ate'],
-                                fn($query) => $query->whereDate('created_at', '<=', $data['data_ate'])
-                            );
-                    })
+                    ->query(function ($query, $data) {
+                        if ($data['created_from']) {
+                            $query->whereDate('created_at', '>=', $data['created_from']);
+                        }
+                        if ($data['created_until']) {
+                            $query->whereDate('created_at', '<=', $data['created_until']);
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
