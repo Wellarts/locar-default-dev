@@ -6,6 +6,8 @@ use App\Filament\Resources\VeiculosLucratividadeResource;
 use App\Filament\Widgets\TotalLucratividade;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 class ListVeiculosLucratividades extends ListRecords
 {
@@ -18,6 +20,8 @@ class ListVeiculosLucratividades extends ListRecords
     {
         return [
           //  Actions\CreateAction::make(),
+           
+
         ];
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Locacao;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\OrdemServico;
@@ -43,5 +44,32 @@ class DocumentoController extends Controller
         $pdf = PDF::loadView('pdf.ordemServico.relatorio', compact('ordemServicoRelatorio'))
             ->setPaper('a4', 'landscape');
         return $pdf->stream('ordem_servico_relatorio.pdf');
+    }
+
+    public function locacoesRelatorio(Request $request)
+    {
+        $query = Locacao::query();
+        if ($request->filled('cliente_id')) {
+            $query->where('cliente_id', $request->cliente_id);
+        }
+        if ($request->filled('veiculo_id')) {
+            $query->where('veiculo_id', $request->veiculo_id);
+        }
+        if ($request->filled('forma_pgmto_id')) {
+            $query->where('forma_pgmto_id', $request->forma_pgmto_id);
+        }
+        if ($request->filled('data_saida')) {
+            $query->whereDate('data_saida', '>=', $request->data_saida);
+        }
+        if ($request->filled('data_retorno')) {
+            $query->whereDate('data_retorno', '<=', $request->data_retorno);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        $locacoes = $query->get();
+        $pdf = PDF::loadView('pdf.locacao.relatorio', compact('locacoes'))
+            ->setPaper('a4', 'landscape');
+        return $pdf->stream('locacoes_relatorio.pdf');
     }
 }

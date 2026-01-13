@@ -49,6 +49,7 @@ use Illuminate\Support\Str;
 use Saade\FilamentAutograph\Forms\Components\SignaturePad;
 use Illuminate\Support\Facades\DB;
 
+
 class LocacaoResource extends Resource
 {
     protected static ?string $model = Locacao::class;
@@ -608,17 +609,7 @@ class LocacaoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('id', 'desc')
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(LocacaoExporter::class)
-                    ->formats([
-                        ExportFormat::Xlsx,
-                    ])
-                    ->columnMapping(false)
-                    ->label('Exportar')
-                    ->modalHeading('Confirmar exportação?')
-            ])
+            ->defaultSort('id', 'desc')           
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->sortable()
@@ -688,7 +679,7 @@ class LocacaoResource extends Resource
                     ->getStateUsing(function (Locacao $record): int {
                         return ($record->km_retorno - $record->km_saida);
                     })
-                    ->toggleable(),               
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('valor_total_desconto')
                     ->summarize(Sum::make()->money('BRL')->label('Total'))
                     ->money('BRL')
@@ -748,6 +739,75 @@ class LocacaoResource extends Resource
                             );
                     })
             ])
+            ->headerActions([
+                ExportAction::make()
+                    ->exporter(LocacaoExporter::class)
+                    ->formats([
+                        ExportFormat::Xlsx,
+                    ])
+                    ->columnMapping(false)
+                    ->label('Exportar')
+                    ->modalHeading('Confirmar exportação?'),
+                Tables\Actions\Action::make('relatorio')
+                    ->label('Relatório de Locações')
+                    ->icon('heroicon-o-printer')
+                    ->color('info')
+                    ->modalHeading('Filtrar Relatório de Locações')
+                    ->form([
+                        \Filament\Forms\Components\Fieldset::make('Filtros')
+                            ->columns([
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
+                            ->schema([
+                                \Filament\Forms\Components\Select::make('cliente_id')
+                                    ->label('Cliente')
+                                    ->relationship('cliente', 'nome')
+                                    ->searchable()
+                                    ->preload(),
+                                \Filament\Forms\Components\Select::make('veiculo_id')
+                                    ->label('Veículo')
+                                    ->live(onBlur: true)
+                                    ->relationship(
+                                        name: 'veiculo',
+                                        modifyQueryUsing: function (Builder $query, $context) {
+                                            $query->where('status', 1)->orderBy('modelo')->orderBy('placa');
+                                        }
+                                    )
+                                    ->getOptionLabelFromRecordUsing(fn(Model $record) => "{$record->modelo} {$record->placa}")
+                                    ->searchable(['modelo', 'placa']),                               
+                                \Filament\Forms\Components\Select::make('forma_pgmto_id')
+                                    ->label('Forma de Pagamento')
+                                    ->relationship('formaPgmto', 'nome')
+                                    ->searchable()
+                                    ->preload(),
+                                \Filament\Forms\Components\Select::make('status')
+                                    ->label('Status')
+                                    ->options([
+                                        '0' => 'Locação Aberta',
+                                        '1' => 'Locação Finalizada',
+                                    ])
+                                    ->searchable(),
+                                \Filament\Forms\Components\DatePicker::make('data_saida')
+                                    ->label('Data de Saída'),
+                                \Filament\Forms\Components\DatePicker::make('data_retorno')
+                                    ->label('Data de Retorno'),
+
+                            ]),
+                    ])
+                    ->action(function (array $data, $livewire) {
+                        $params = [];
+                        if (!empty($data['cliente_id'])) $params['cliente_id'] = $data['cliente_id'];
+                        if (!empty($data['veiculo_id'])) $params['veiculo_id'] = $data['veiculo_id'];
+                        if (!empty($data['forma_pgmto_id'])) $params['forma_pgmto_id'] = $data['forma_pgmto_id'];
+                        if (!empty($data['data_saida'])) $params['data_saida'] = $data['data_saida'];
+                        if (!empty($data['data_retorno'])) $params['data_retorno'] = $data['data_retorno'];
+                        if (!empty($data['status'])) $params['status'] = $data['status'];
+                        $queryString = http_build_query($params);
+                        $url = route('imprimirLocacoesRelatorio') . ($queryString ? ('?' . $queryString) : '');
+                        $livewire->js("window.open('{$url}', '_blank')");
+                    }),
+            ])
             ->actions([
                 Tables\Actions\Action::make('Imprimir')
                     ->url(fn(Locacao $record): string => route('imprimirLocacao', $record))
@@ -755,7 +815,7 @@ class LocacaoResource extends Resource
                     ->openUrlInNewTab(),
                 Tables\Actions\EditAction::make()
                     ->modalHeading('Editar locação')
-                    ->after(function ($data) {                        
+                    ->after(function ($data) {
                         if (isset($data['status']) && $data['status'] == 1 && isset($data['veiculo_id']) && isset($data['km_retorno'])) {
                             DB::table('veiculos')
                                 ->where('id', $data['veiculo_id'])
@@ -771,13 +831,11 @@ class LocacaoResource extends Resource
                             DB::table('veiculos')
                                 ->where('id', $record->veiculo_id)
                                 ->update(['status_locado' => 0]);
-                        
                         }
-                        if($record->status_financeiro == true ) {
+                        if ($record->status_financeiro == true) {
                             ContasReceber::where('locacao_id', $record->id)->delete();
                             FluxoCaixa::where('locacao_id', $record->id)->delete();
                         }
-                        
                     }),
             ])
             ->bulkActions([
@@ -786,7 +844,7 @@ class LocacaoResource extends Resource
                 ]),
             ])
             ->deferLoading()
-           //>poll('60s')
+            //>poll('60s')
             ->striped() // Linhas listradas            
             ->defaultPaginationPageOption(25)
             ->paginated([10, 25, 50, 100]);
