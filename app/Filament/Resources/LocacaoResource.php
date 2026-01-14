@@ -815,6 +815,21 @@ class LocacaoResource extends Resource
                     ->url(fn(Locacao $record): string => route('imprimirLocacao', $record))
                     ->label('Contrato 1')
                     ->openUrlInNewTab(),
+                Tables\Actions\Action::make('GerarContrato')
+                    ->label('Gerar Contrato (Template)')
+                    ->icon('heroicon-o-document-text')
+                    ->form([
+                        Forms\Components\Select::make('contrato_id')
+                            ->label('Template de Contrato')
+                            ->options(function () {
+                                return \App\Models\Contrato::orderBy('titulo')->pluck('titulo', 'id')->toArray();
+                            })
+                            ->required(),
+                    ])
+                    ->action(function (array $data, Locacao $record, $livewire) {
+                        $url = route('imprimirLocacaoContrato', ['locacao' => $record->id, 'contrato' => $data['contrato_id']]);
+                        $livewire->js("window.open('{$url}', '_blank')");
+                    }),
                 Tables\Actions\EditAction::make()
                     ->modalHeading('Editar locação')
                     ->after(function ($data) {

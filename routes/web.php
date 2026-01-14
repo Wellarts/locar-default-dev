@@ -21,6 +21,7 @@ use App\Http\Controllers\DocumentoController;
 Route::get('/', function () { return redirect('/admin'); })->name('login');
 
 Route::get('pdf/locacao/{id}',[Contrato::class, 'printLocacao'])->name('imprimirLocacao');
+Route::get('pdf/locacao/{locacao}/contrato/{contrato}',[Contrato::class, 'printLocacaoContrato'])->name('imprimirLocacaoContrato');
 Route::get('pdf/documento/{id}',[DocumentoController::class, 'ordemServico'])->name('imprimirDocumento');
 Route::get('pdf/ordemServico',[DocumentoController::class, 'ordemServicoRelatorio'])->name('imprimirOrdemServicoRelatorio');
 Route::get('pdf/locacoes',[DocumentoController::class, 'locacoesRelatorio'])->name('imprimirLocacoesRelatorio');
@@ -28,3 +29,5 @@ Route::get('pdf/contaspagar',[DocumentoController::class, 'contasPagarRelatorio'
 Route::get('pdf/contaspagar/launch',[DocumentoController::class, 'launchContasPagarRelatorio'])->name('imprimirContasPagarRelatorioLaunch');
 Route::get('pdf/contasreceber',[DocumentoController::class, 'contasReceberRelatorio'])->name('imprimirContasReceberRelatorio');
 Route::get('pdf/contasreceber/launch',[DocumentoController::class, 'launchContasReceberRelatorio'])->name('imprimirContasReceberRelatorioLaunch');
+Route::get('/contrato/variaveis', [\App\Http\Controllers\ContratoController::class, 'variaveis'])
+    ->name('contrato.variaveis');

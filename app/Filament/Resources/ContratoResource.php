@@ -28,6 +28,15 @@ class ContratoResource extends Resource
                     ->columnSpanFull()
                     ->label('Título')
                     ->maxLength(255),
+                
+                Forms\Components\Actions::make([
+                    Forms\Components\Actions\Action::make('verVariaveis')
+                        ->label('📋 Ver Variáveis Disponíveis')
+                        ->color('primary')
+                        ->icon('heroicon-o-information-circle')
+                        ->url(route('contrato.variaveis'), shouldOpenInNewTab: true)
+                ])->columnSpanFull(),
+                
                 Forms\Components\RichEditor::make('descricao')
                     ->label('Descrição')
                     ->columnSpanFull(),
