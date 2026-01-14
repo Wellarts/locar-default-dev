@@ -54,7 +54,7 @@ class ManageContasPagars extends ManageRecords
                 'valor_total' => $record->valor_total,
                 'categoria_id' => $record->categoria_id,
                 'parcelas' => $record->parcelas,
-                'formaPgmto' => $record->formaPgmto,
+                'forma_pgmto_id' => $record->forma_pgmto_id,
                 'ordem_parcela' => $cont + 1,
                 'data_vencimento' => $dataVencimento,
                 'valor_pago' => 0.00,

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Exports\ContasPagarExporter;
 use App\Filament\Resources\ContasReceberResource\Pages;
 use App\Filament\Exports\ContasReceberExporter;
 use App\Models\Cliente;
@@ -175,6 +176,75 @@ class ContasReceberResource extends Resource
     {
         return $table
             ->defaultSort('data_vencimento', 'asc')
+            ->headerActions([
+                Tables\Actions\ExportAction::make()
+                    ->exporter(ContasReceberExporter::class)
+                    ->formats([
+                        ExportFormat::Xlsx,
+                    ])
+                    ->columnMapping(false)
+                    ->label('Exportar Contas')
+                    ->modalHeading('Confirmar exportação?'),
+                Tables\Actions\Action::make('relatorio')
+                    ->label('Gerar Relatório')
+                    ->icon('heroicon-o-document-text')
+                    ->modalHeading('Filtrar Relatório - Contas a Receber')
+                    ->form([
+                        Forms\Components\Select::make('cliente_id')
+                            ->label('Cliente')
+                            ->relationship('cliente', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+
+                        Forms\Components\Select::make('categoria_id')
+                            ->label('Categoria')
+                            ->relationship('categoria', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+
+                        Forms\Components\Select::make('forma_pgmto_id')
+                            ->label('Forma de Pagamento')
+                            ->relationship('formaPgmto', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+
+                        Forms\Components\Select::make('status')
+                            ->label('Recebido')
+                            ->options([
+                                '' => 'Todos',
+                                '1' => 'Sim',
+                                '0' => 'Não',
+                            ])
+                            ->nullable(),
+
+                        Forms\Components\DatePicker::make('data_vencimento_inicio')
+                            ->label('Vencimento (Início)')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+
+                        Forms\Components\DatePicker::make('data_vencimento_fim')
+                            ->label('Vencimento (Fim)')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+
+                        Forms\Components\DatePicker::make('data_recebimento_inicio')
+                            ->label('Recebimento (Início)')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+
+                        Forms\Components\DatePicker::make('data_recebimento_fim')
+                            ->label('Recebimento (Fim)')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+                    ])
+                    ->url(function (array $data): string {
+                        $params = array_filter($data, fn($v) => $v !== null && $v !== '');
+                        return route('imprimirContasReceberRelatorioLaunch') . (count($params) ? ('?' . http_build_query($params)) : '');
+                    }),
+            ])
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')
@@ -304,8 +374,8 @@ class ContasReceberResource extends Resource
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ])
-            ->deferLoading();// Carrega dados apenas quando necessário
-           //>poll('30s'); // Atualiza a cada 30 segundos
+            ->deferLoading(); // Carrega dados apenas quando necessário
+        //>poll('30s'); // Atualiza a cada 30 segundos
     }
 
     public static function getPages(): array

@@ -1,5 +1,4 @@
 <?php
-
 use App\Http\Controllers\Contrato;
 use App\Http\Controllers\FichaAgendamento;
 use Illuminate\Support\Facades\Route;
@@ -25,3 +24,7 @@ Route::get('pdf/locacao/{id}',[Contrato::class, 'printLocacao'])->name('imprimir
 Route::get('pdf/documento/{id}',[DocumentoController::class, 'ordemServico'])->name('imprimirDocumento');
 Route::get('pdf/ordemServico',[DocumentoController::class, 'ordemServicoRelatorio'])->name('imprimirOrdemServicoRelatorio');
 Route::get('pdf/locacoes',[DocumentoController::class, 'locacoesRelatorio'])->name('imprimirLocacoesRelatorio');
+Route::get('pdf/contaspagar',[DocumentoController::class, 'contasPagarRelatorio'])->name('imprimirContasPagarRelatorio');
+Route::get('pdf/contaspagar/launch',[DocumentoController::class, 'launchContasPagarRelatorio'])->name('imprimirContasPagarRelatorioLaunch');
+Route::get('pdf/contasreceber',[DocumentoController::class, 'contasReceberRelatorio'])->name('imprimirContasReceberRelatorio');
+Route::get('pdf/contasreceber/launch',[DocumentoController::class, 'launchContasReceberRelatorio'])->name('imprimirContasReceberRelatorioLaunch');

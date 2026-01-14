@@ -191,6 +191,65 @@ class ContasPagarResource extends Resource
         return $table
             ->defaultSort('data_vencimento', 'asc')
             ->headerActions([
+                Tables\Actions\Action::make('relatorio')
+                    ->label('Gerar Relatório')
+                    ->icon('heroicon-o-document-text')
+                    ->modalHeading('Filtrar Relatório - Contas a Pagar')
+                    ->form([
+                        Forms\Components\Select::make('fornecedor_id')
+                            ->label('Fornecedor')
+                            ->relationship('fornecedor', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+
+                        Forms\Components\Select::make('categoria_id')
+                            ->label('Categoria')
+                            ->relationship('categoria', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+
+                        Forms\Components\Select::make('forma_pgmto_id')
+                            ->label('Forma de Pagamento')
+                            ->relationship('formaPgmto', 'nome')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
+
+                        Forms\Components\Select::make('status')
+                            ->label('Pago')
+                            ->options([
+                                '' => 'Todos',
+                                '1' => 'Sim',
+                                '0' => 'Não',
+                            ])
+                            ->nullable(),
+
+                        Forms\Components\DatePicker::make('data_vencimento_inicio')
+                            ->label('Vencimento (Início)')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+
+                        Forms\Components\DatePicker::make('data_vencimento_fim')
+                            ->label('Vencimento (Fim)')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+
+                        Forms\Components\DatePicker::make('data_pagamento_inicio')
+                            ->label('Pagamento (Início)')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+
+                        Forms\Components\DatePicker::make('data_pagamento_fim')
+                            ->label('Pagamento (Fim)')
+                            ->displayFormat('d/m/Y')
+                            ->nullable(),
+                    ])
+                    ->url(function (array $data): string {
+                        $params = array_filter($data, fn($v) => $v !== null && $v !== '');
+                        return route('imprimirContasPagarRelatorioLaunch') . (count($params) ? ('?' . http_build_query($params)) : '');
+                    }),
                 Tables\Actions\ExportAction::make()
                     ->exporter(ContasPagarExporter::class)
                     ->formats([

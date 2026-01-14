@@ -48,18 +48,7 @@ class ContasReceberExporter extends Exporter
             //     ->label('Parcelas'),
             ExportColumn::make('ordem_parcela')
                 ->label('Parcela Nº'),
-            ExportColumn::make('formaPgmto')
-                ->formatStateUsing(function ($state) {
-                    if ($state == 1) {
-                        return 'Dinheiro';
-                    } elseif ($state == 2) {
-                        return 'Pix';
-                    } elseif ($state == 3) {
-                        return 'Cartão';
-                    } elseif ($state == 4) {
-                        return 'Boleto';
-                    }
-                })
+            ExportColumn::make('formaPgmto.nome')               
                 ->label('Forma de Pagamento'),
             ExportColumn::make('data_vencimento')
                 ->formatStateUsing(fn($state) => Carbon::parse($state)->format('d/m/Y'))

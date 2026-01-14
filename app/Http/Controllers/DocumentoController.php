@@ -3,6 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Locacao;
+use App\Models\ContasPagar;
+use App\Models\Fornecedor;
+use App\Models\Categoria;
+use App\Models\FormaPagamento;
+use App\Models\Cliente;
+use App\Models\ContasReceber;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\OrdemServico;
@@ -71,5 +78,170 @@ class DocumentoController extends Controller
         $pdf = PDF::loadView('pdf.locacao.relatorio', compact('locacoes'))
             ->setPaper('a4', 'landscape');
         return $pdf->stream('locacoes_relatorio.pdf');
+    }
+
+    public function contasPagarRelatorio(Request $request)
+    {
+        $query = ContasPagar::query()->with(['fornecedor', 'categoria', 'formaPgmto']);
+
+        if ($request->filled('fornecedor_id')) {
+            $query->where('fornecedor_id', $request->fornecedor_id);
+        }
+        if ($request->filled('categoria_id')) {
+            $query->where('categoria_id', $request->categoria_id);
+        }
+        if ($request->filled('forma_pgmto_id')) {
+            $query->where('forma_pgmto_id', $request->forma_pgmto_id);
+        }
+        if ($request->filled('status')) {
+            // esperar valores '1' ou '0' ou 'paid'/'unpaid'
+            $status = $request->status;
+            if (in_array($status, ['1', '0'])) {
+                $query->where('status', (bool) $status);
+            }
+        }
+        if ($request->filled('data_vencimento_inicio')) {
+            $query->whereDate('data_vencimento', '>=', $request->data_vencimento_inicio);
+        }
+        if ($request->filled('data_vencimento_fim')) {
+            $query->whereDate('data_vencimento', '<=', $request->data_vencimento_fim);
+        }
+        if ($request->filled('data_pagamento_inicio')) {
+            $query->whereDate('data_pagamento', '>=', $request->data_pagamento_inicio);
+        }
+        if ($request->filled('data_pagamento_fim')) {
+            $query->whereDate('data_pagamento', '<=', $request->data_pagamento_fim);
+        }
+
+        $contas = $query->orderBy('data_vencimento', 'asc')->get();
+
+        // Monta lista de filtros legíveis para exibir na view
+        $filtrosNomes = [];
+        if ($request->filled('fornecedor_id')) {
+            $f = Fornecedor::find($request->fornecedor_id);
+            $filtrosNomes['Fornecedor'] = $f->nome ?? $request->fornecedor_id;
+        }
+        if ($request->filled('categoria_id')) {
+            $c = Categoria::find($request->categoria_id);
+            $filtrosNomes['Categoria'] = $c->nome ?? $request->categoria_id;
+        }
+        if ($request->filled('forma_pgmto_id')) {
+            $fp = FormaPagamento::find($request->forma_pgmto_id);
+            $filtrosNomes['Forma Pagamento'] = $fp->nome ?? $request->forma_pgmto_id;
+        }
+        if ($request->filled('status')) {
+            $st = $request->status;
+            if ($st === '1' || $st === 1 || $st === true) {
+                $filtrosNomes['Pago'] = 'Sim';
+            } elseif ($st === '0' || $st === 0 || $st === false) {
+                $filtrosNomes['Pago'] = 'Não';
+            }
+        }
+
+        if ($request->filled('data_vencimento_inicio')) {
+            $filtrosNomes['Vencimento (Início)'] = Carbon::parse($request->data_vencimento_inicio)->format('d/m/Y');
+        }
+        if ($request->filled('data_vencimento_fim')) {
+            $filtrosNomes['Vencimento (Fim)'] = Carbon::parse($request->data_vencimento_fim)->format('d/m/Y');
+        }
+        if ($request->filled('data_pagamento_inicio')) {
+            $filtrosNomes['Pagamento (Início)'] = Carbon::parse($request->data_pagamento_inicio)->format('d/m/Y');
+        }
+        if ($request->filled('data_pagamento_fim')) {
+            $filtrosNomes['Pagamento (Fim)'] = Carbon::parse($request->data_pagamento_fim)->format('d/m/Y');
+        }
+
+        $pdf = PDF::loadView('pdf.contasPagar.relatorio', compact('contas', 'filtrosNomes'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('contas_pagar_relatorio.pdf');
+    }
+
+    public function contasReceberRelatorio(Request $request)
+    {
+        $query = ContasReceber::query()->with(['cliente', 'categoria', 'formaPgmto', 'locacao']);
+
+        if ($request->filled('cliente_id')) {
+            $query->where('cliente_id', $request->cliente_id);
+        }
+        if ($request->filled('categoria_id')) {
+            $query->where('categoria_id', $request->categoria_id);
+        }
+        if ($request->filled('forma_pgmto_id')) {
+            $query->where('forma_pgmto_id', $request->forma_pgmto_id);
+        }
+        if ($request->filled('status')) {
+            $status = $request->status;
+            if (in_array($status, ['1', '0'])) {
+                $query->where('status', (bool) $status);
+            }
+        }
+        if ($request->filled('data_vencimento_inicio')) {
+            $query->whereDate('data_vencimento', '>=', $request->data_vencimento_inicio);
+        }
+        if ($request->filled('data_vencimento_fim')) {
+            $query->whereDate('data_vencimento', '<=', $request->data_vencimento_fim);
+        }
+        if ($request->filled('data_recebimento_inicio')) {
+            $query->whereDate('data_recebimento', '>=', $request->data_recebimento_inicio);
+        }
+        if ($request->filled('data_recebimento_fim')) {
+            $query->whereDate('data_recebimento', '<=', $request->data_recebimento_fim);
+        }
+
+        $contas = $query->orderBy('data_vencimento', 'asc')->get();
+
+        $filtrosNomes = [];
+        if ($request->filled('cliente_id')) {
+            $c = Cliente::find($request->cliente_id);
+            $filtrosNomes['Cliente'] = $c->nome ?? $request->cliente_id;
+        }
+        if ($request->filled('categoria_id')) {
+            $c = Categoria::find($request->categoria_id);
+            $filtrosNomes['Categoria'] = $c->nome ?? $request->categoria_id;
+        }
+        if ($request->filled('forma_pgmto_id')) {
+            $fp = FormaPagamento::find($request->forma_pgmto_id);
+            $filtrosNomes['Forma Pagamento'] = $fp->nome ?? $request->forma_pgmto_id;
+        }
+        if ($request->filled('status')) {
+            $st = $request->status;
+            if ($st === '1' || $st === 1 || $st === true) {
+                $filtrosNomes['Recebido'] = 'Sim';
+            } elseif ($st === '0' || $st === 0 || $st === false) {
+                $filtrosNomes['Recebido'] = 'Não';
+            }
+        }
+        if ($request->filled('data_vencimento_inicio')) {
+            $filtrosNomes['Vencimento (Início)'] = Carbon::parse($request->data_vencimento_inicio)->format('d/m/Y');
+        }
+        if ($request->filled('data_vencimento_fim')) {
+            $filtrosNomes['Vencimento (Fim)'] = Carbon::parse($request->data_vencimento_fim)->format('d/m/Y');
+        }
+        if ($request->filled('data_recebimento_inicio')) {
+            $filtrosNomes['Recebimento (Início)'] = Carbon::parse($request->data_recebimento_inicio)->format('d/m/Y');
+        }
+        if ($request->filled('data_recebimento_fim')) {
+            $filtrosNomes['Recebimento (Fim)'] = Carbon::parse($request->data_recebimento_fim)->format('d/m/Y');
+        }
+
+        $pdf = PDF::loadView('pdf.contasReceber.relatorio', compact('contas', 'filtrosNomes'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('contas_receber_relatorio.pdf');
+    }
+
+    public function launchContasPagarRelatorio(Request $request)
+    {
+        $params = $request->all();
+        $url = route('imprimirContasPagarRelatorio') . (count($params) ? ('?' . http_build_query($params)) : '');
+        return view('pdf.launch', ['url' => $url]);
+    }
+
+    public function launchContasReceberRelatorio(Request $request)
+    {
+        $params = $request->all();
+        $url = route('imprimirContasReceberRelatorio') . (count($params) ? ('?' . http_build_query($params)) : '');
+        return view('pdf.launch', ['url' => $url]);
     }
 }
