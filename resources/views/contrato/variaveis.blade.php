@@ -85,14 +85,22 @@
         <div class="row">
             @php
                 $clienteVars = [
-                    '{{ $cliente->nome }}' => 'Nome completo',
+                    '{{ $cliente_nome }}' => 'Nome completo',
                     '{{ $cpfCnpj }}' => 'CPF ou CNPJ',
-                    '{{ $cliente->rg }}' => 'RG',
                     '{{ $cliente_endereco }}' => 'Endereço completo',
-                    '{{ $cliente_cidade }}' => 'Cidade',
                     '{{ $cliente_estado }}' => 'Estado',
-
-
+                    '{{ $cliente_cidade }}' => 'Cidade',
+                    '{{ $cliente_telefone_1 }}' => 'Telefone 1',
+                    '{{ $cliente_telefone_2 }}' => 'Telefone 2',
+                    '{{ $cliente_email }}' => 'E-mail',                    
+                    '{{ $cliente_rede_social }}' => 'Rede social',
+                    '{{ $cliente_cnh }}' => 'Número da CNH',
+                    '{{ $cliente_validade_cnh }}' => 'Validade da CNH',
+                    '{{ $cliente_rg }}' => 'RG',
+                    '{{ $cliente_orgao_emissor }}' => 'Órgão emissor',
+                    '{{ $cliente_uf_rg }}' => 'UF do RG',
+                    '{{ $cliente_data_nascimento }}' => 'Data de nascimento',                
+                   
                 ];
             @endphp
             
@@ -123,7 +131,7 @@
                     '{{ $veiculo_cor }}' => 'Cor',
                     '{{ $veiculo_chassi }}' => 'Chassi',
                     '{{ $veiculo_renavam }}' => 'Renavam',
-                    '{{ $veiculo_km }}' => 'KM',
+                    '{{ $veiculo_km_saida }}' => 'KM de saída',
                 ];
             @endphp
             
@@ -143,7 +151,7 @@
         </div>
 
         <!-- Datas e Valores -->
-        <h3 class="section-title mt-4">📅 Datas e Valores</h3>
+        <h3 class="section-title mt-4">📅 Datas e Valores da Locação</h3>
         <div class="row">
             @php
                 $dataVars = [
@@ -154,9 +162,40 @@
                     '{{ $qtd_diarias }}' => 'Quantidade de diárias',
                     '{{ $qtd_semanas }}' => 'Quantidade de semanas',
                     '{{ $valor_total }}' => 'Valor total (R$)',
+                    '{{ $valor_desconto }}' => 'Valor do desconto (R$)',
                     '{{ $valor_total_desconto }}' => 'Valor total com desconto (R$)',
                     '{{ $valor_caucao }}' => 'Caução (R$)',
-                    '{{ $dataAtual->format("d/m/Y") }}' => 'Data de hoje',
+                    '{{ $data_hoje }}' => 'Data de hoje',
+                    '{{ $observacoes }}' => 'Observações adicionais',
+                ];
+            @endphp
+            
+            @foreach($dataVars as $var => $desc)
+            <div class="col-md-6 mb-3">
+                <div class="variable-card d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="variable-code mb-1">{{ $var }}</p>
+                        <small class="text-muted">{{ $desc }}</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="{{ $var }}">
+                        Copiar
+                    </button>
+                </div>
+            </div>
+            @endforeach
+        </div>
+
+         <!-- Datas e Valores -->
+        <h3 class="section-title mt-4">📅 Assinaturas</h3>
+        <div class="row">
+            @php
+                $dataVars = [
+                    '{{ $testemunha_1 }}' => 'Nome da Testemunha 1',
+                    '{{ $testemunha_2 }}' => 'Nome da Testemunha 2',
+                    '{{ $testemunha_1_rg }}' => 'RG da Testemunha 1',
+                    '{{ $testemunha_2_rg }}' => 'RG da Testemunha 2',
+                    '{{ $fiador }}' => 'Nome do Fiador',
+                    '{{ $dados_fiador }}' => 'Dados do Fiador',
                 ];
             @endphp
             

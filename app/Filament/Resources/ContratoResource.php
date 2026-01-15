@@ -39,7 +39,24 @@ class ContratoResource extends Resource
                 
                 Forms\Components\RichEditor::make('descricao')
                     ->label('Descrição')
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->fileAttachmentsDisk('public')
+                    ->fileAttachmentsDirectory('contratos')
+                    ->toolbarButtons([
+                        'attachFiles',
+                        'blockquote',
+                        'bold',
+                        'bulletList',
+                        'codeBlock',
+                        'h2',
+                        'h3',
+                        'italic',
+                        'link',
+                        'orderedList',
+                        'redo',
+                        'strike',
+                        'undo',
+                    ]),
             ]);
     }
 

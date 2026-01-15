@@ -22,6 +22,7 @@ Route::get('/', function () { return redirect('/admin'); })->name('login');
 
 Route::get('pdf/locacao/{id}',[Contrato::class, 'printLocacao'])->name('imprimirLocacao');
 Route::get('pdf/locacao/{locacao}/contrato/{contrato}',[Contrato::class, 'printLocacaoContrato'])->name('imprimirLocacaoContrato');
+Route::get('debug/contrato/{id}', [Contrato::class, 'debugTemplate'])->name('debugContrato');
 Route::get('pdf/documento/{id}',[DocumentoController::class, 'ordemServico'])->name('imprimirDocumento');
 Route::get('pdf/ordemServico',[DocumentoController::class, 'ordemServicoRelatorio'])->name('imprimirOrdemServicoRelatorio');
 Route::get('pdf/locacoes',[DocumentoController::class, 'locacoesRelatorio'])->name('imprimirLocacoesRelatorio');
