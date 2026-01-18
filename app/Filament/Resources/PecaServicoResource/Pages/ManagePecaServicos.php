@@ -16,9 +16,9 @@ class ManagePecaServicos extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Adicionar Peça/Serviço')
+                ->label('Adicionar')
                 ->icon('heroicon-o-plus')
-                ->modalHeading('Adicionar Peça/Serviço'),
+                ->modalHeading('Criar Nova Peça/Serviço'),
         ];
     }
 }

@@ -19,8 +19,9 @@ class ManageCustoVeiculos extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Novo')
-                ->modalHeading('Criar Despesa/Manutenção')
+                ->label('Adicionar')
+                ->icon('heroicon-o-plus')
+                ->modalHeading('Criar Nova Despesa/Manutenção')
                 ->after(function ($data, $record) {
                     $veiculo = Veiculo::find($data['veiculo_id']);
                     $veiculo->km_atual = $data['km_atual'];

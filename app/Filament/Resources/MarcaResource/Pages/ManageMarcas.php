@@ -14,8 +14,9 @@ class ManageMarcas extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Novo')
-                ->modalHeading('Criar Marca'),
+                ->label('Adicionar')
+                ->icon('heroicon-o-plus')
+                ->modalHeading('Criar Nova Marca'),
         ];
     }
 }

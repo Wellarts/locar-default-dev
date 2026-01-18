@@ -16,7 +16,7 @@ class ManageFormaPagamentos extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Nova Forma de Pagamento')
+                ->label('Adicionar')
                 ->icon('heroicon-o-plus')
                 ->modalHeading('Criar Nova Forma de Pagamento'),
         ];

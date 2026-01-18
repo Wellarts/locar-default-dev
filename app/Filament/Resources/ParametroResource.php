@@ -67,6 +67,7 @@ class ParametroResource extends Resource
                             ->label('Logo da Empresa')
                             ->image()
                             ->maxSize(1024)
+                            ->downloadable()
                             ->nullable()
                             ->columnSpan('full'),
                     ]),

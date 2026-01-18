@@ -16,8 +16,9 @@ class ManageFornecedors extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Novo')
-                ->modalHeading('Criar Fornecedor'),
+                ->label('Adicionar')
+                ->icon('heroicon-o-plus')
+                ->modalHeading('Criar Novo Fornecedor'),
         ];
     }
 }

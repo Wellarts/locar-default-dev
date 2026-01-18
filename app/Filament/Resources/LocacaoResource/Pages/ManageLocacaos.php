@@ -35,7 +35,7 @@ class ManageLocacaos extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Adicionar Locação')
+                ->label('Adicionar')
                 ->icon('heroicon-o-plus')
                 ->modalHeading('Criar Locação')                
                 ->after(function ($data, $record) {
