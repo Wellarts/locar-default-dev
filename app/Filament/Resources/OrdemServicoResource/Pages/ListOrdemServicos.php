@@ -33,7 +33,7 @@ class ListOrdemServicos extends ListRecords
                 //     }
                 // }),
             Actions\Action::make('relatorio')
-                ->label('Relatório de Ordens de Serviço')
+                ->label('Relatório - PDF')
                 ->icon('heroicon-o-printer')
                 ->color('info')
                 ->modalHeading('Filtrar Relatório de Ordens de Serviço')

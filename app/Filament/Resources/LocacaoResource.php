@@ -751,7 +751,7 @@ class LocacaoResource extends Resource
                     ->label('Exportar')
                     ->modalHeading('Confirmar exportação?'),
                 Tables\Actions\Action::make('relatorio')
-                    ->label('Relatório de Locações')
+                    ->label('Relatório - PDF')
                     ->icon('heroicon-o-printer')
                     ->color('info')
                     ->modalHeading('Filtrar Relatório de Locações')
@@ -816,7 +816,7 @@ class LocacaoResource extends Resource
                 //     ->label('Contrato 1')
                 //     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('GerarContrato')
-                    ->label('Gerar Contrato')
+                    ->label('Gerar Documento')
                     ->icon('heroicon-o-document-text')
                     ->form([
                         Forms\Components\Select::make('contrato_id')

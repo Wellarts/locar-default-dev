@@ -117,17 +117,7 @@ class CustoVeiculoResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('id', 'desc')
-            ->headerActions([
-                ExportAction::make()
-                    ->exporter(CustoVeiculoExporter::class)
-                    ->formats([
-                        ExportFormat::Xlsx,
-                    ])
-                    ->columnMapping(false)
-                    ->label('Exportar')
-                    ->modalHeading('Confirmar exportação?')
-            ])
+            ->defaultSort('id', 'desc')           
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')
@@ -192,6 +182,88 @@ class CustoVeiculoResource extends Resource
                                 fn($query) => $query->whereDate('data', '<=', $data['data_ate'])
                             );
                     })
+            ])
+             ->headerActions([
+                ExportAction::make()
+                    ->exporter(CustoVeiculoExporter::class)
+                    ->formats([
+                        ExportFormat::Xlsx,
+                    ])
+                    ->columnMapping(false)
+                    ->label('Exportar')
+                    ->modalHeading('Confirmar exportação?'),
+                 Tables\Actions\Action::make('relatorio')
+                    ->label('Relatório de Despesas')
+                    ->icon('heroicon-o-document-text')
+                    ->color('info')
+                    ->modalHeading('Relatório de Despesas/Manutenções de Veículos')
+                    ->form([
+                       \Filament\Forms\Components\Fieldset::make('Filtros')
+                            ->columns([
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
+                            ->schema([
+                                Forms\Components\Select::make('veiculo_id')
+                                    ->label('Veículo')
+                                    ->searchable()
+                                    ->options(
+                                        fn() => Veiculo::query()
+                                            ->orderBy('modelo')
+                                            ->orderBy('placa')
+                                            ->get()
+                                            ->mapWithKeys(fn($v) => [$v->id => "{$v->modelo} {$v->placa}"])
+                                            ->toArray()
+                                    ),
+                                Forms\Components\Select::make('fornecedor_id')
+                                    ->label('Fornecedor')
+                                    ->searchable()
+                                    ->options(Fornecedor::all()->pluck('nome', 'id')->toArray()),
+                            ]),
+                       \Filament\Forms\Components\Fieldset::make('Datas')
+                            ->columns([
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
+                            ->schema([
+                                DatePicker::make('data_de')
+                                    ->label('Data de:'),
+                                DatePicker::make('data_ate')
+                                    ->label('Data até:'),
+                            ]), 
+                            \Filament\Forms\Components\Fieldset::make('Filtros')
+                            ->columns([
+                                'sm' => 1,
+                                'md' => 2,
+                            ])
+                            ->schema([
+                                Forms\Components\Select::make('categoria_id')
+                                    ->label('Categoria')
+                                    ->searchable()
+                                    ->options(Categoria::all()->pluck('nome', 'id')->toArray()),
+                            ]),
+                    ])
+                    ->action(function (array $data, $livewire) {
+                        $params = [];
+                        if (!empty($data['veiculo_id'])) {
+                            $params['veiculo_id'] = $data['veiculo_id'];
+                        }
+                        if (!empty($data['fornecedor_id'])) {
+                            $params['fornecedor_id'] = $data['fornecedor_id'];
+                        }
+                        if (!empty($data['data_de'])) {
+                            $params['data_de'] = $data['data_de']->format('Y-m-d');
+                        }
+                        if (!empty($data['data_ate'])) {
+                            $params['data_ate'] = $data['data_ate']->format('Y-m-d');
+                        }
+                        if (!empty($data['categoria_id'])) {
+                            $params['categoria_id'] = $data['categoria_id'];
+                        }
+                        $queryString = http_build_query($params);
+                        $url = route('imprimirRelatorioCustoVeiculo') . ($queryString ? ('?' . $queryString) : '');
+                        $livewire->js("window.open('{$url}', '_blank')");
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make()

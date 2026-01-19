@@ -34,3 +34,4 @@ Route::get('/contrato/variaveis', [\App\Http\Controllers\ContratoController::cla
     ->name('contrato.variaveis');
 Route::get('pdf/lucratividade-veiculos',[DocumentoController::class, 'veiculosLucratividade'])->name('veiculos-lucratividade.pdf');
 Route::get('pdf/fluxo-caixa',[DocumentoController::class, 'fluxoCaixa'])->name('relatorio.fluxo.caixa.pdf');
+Route::get('pdf/relatorio-custo-veiculo',[DocumentoController::class, 'relatorioCustoVeiculo'])->name('imprimirRelatorioCustoVeiculo');

@@ -28,9 +28,9 @@ class ManageFluxoCaixas extends ManageRecords
                     }
                 ),
             Actions\Action::make('exportar_pdf')
-                ->label('Relatório Fluxo de Caixa')
+                ->label('Relatório - PDF')
                 ->icon('heroicon-o-printer')
-                ->color('success')
+                ->color('info')
                 ->form([
                     \Filament\Forms\Components\DatePicker::make('data_de')->label('Data de'),
                     \Filament\Forms\Components\DatePicker::make('data_ate')->label('Data até'),

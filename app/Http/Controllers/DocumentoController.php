@@ -307,4 +307,153 @@ class DocumentoController extends Controller
 
         return $pdf->stream('fluxo_caixa_relatorio.pdf');
     }
+
+    public function relatorioCustoVeiculo(Request $request)
+    {
+        $query = DB::table('custo_veiculos')
+            ->join('veiculos', 'custo_veiculos.veiculo_id', '=', 'veiculos.id')
+            ->leftJoin('fornecedors', 'custo_veiculos.fornecedor_id', '=', 'fornecedors.id')
+            ->leftJoin('categorias', 'custo_veiculos.categoria_id', '=', 'categorias.id')
+            ->select(
+                'custo_veiculos.*',
+                'veiculos.modelo',
+                'veiculos.placa',
+                'veiculos.ano',
+                'fornecedors.nome as fornecedor_nome',
+                'categorias.nome as categoria_nome'
+            );
+
+        if ($request->filled('veiculo_id')) {
+            $query->where('custo_veiculos.veiculo_id', $request->veiculo_id);
+        }
+        if ($request->filled('data_inicio')) {
+            $query->whereDate('custo_veiculos.data', '>=', $request->data_inicio);
+        }
+        if ($request->filled('data_fim')) {
+            $query->whereDate('custo_veiculos.data', '<=', $request->data_fim);
+        }
+        if ($request->filled('fornecedor_id')) {
+            $query->where('custo_veiculos.fornecedor_id', $request->fornecedor_id);
+        }
+        if ($request->filled('categoria_id')) {
+            $query->where('custo_veiculos.categoria_id', $request->categoria_id);
+        }
+        if ($request->filled('pago')) {
+            $query->where('custo_veiculos.pago', $request->pago);
+        }
+        if ($request->filled('financeiro')) {
+            $query->where('custo_veiculos.financeiro', $request->financeiro);
+        }
+
+        $custosVeiculos = $query->orderBy('custo_veiculos.data', 'asc')->get();
+
+        // Calcular totais e médias
+        $totalCustoGeral = 0;
+        $totalCustoMensal = 0;
+        $custosPorVeiculo = [];
+
+        foreach ($custosVeiculos as $custo) {
+            $veiculoId = $custo->veiculo_id;
+
+            if (!isset($custosPorVeiculo[$veiculoId])) {
+                $custosPorVeiculo[$veiculoId] = [
+                    'modelo' => $custo->modelo,
+                    'placa' => $custo->placa,
+                    'ano' => $custo->ano,
+                    'custo_total' => 0,
+                    'custo_medio_mensal' => 0,
+                    'contagem' => 0,
+                    'descricoes' => []
+                ];
+            }
+
+            $custosPorVeiculo[$veiculoId]['custo_total'] += $custo->valor;
+            $custosPorVeiculo[$veiculoId]['contagem']++;
+
+            // Adicionar todos os campos do custo
+            $custosPorVeiculo[$veiculoId]['descricoes'][] = [
+                'id' => $custo->id,
+                'descricao' => $custo->descricao,
+                'valor' => $custo->valor,
+                'data' => $custo->data,
+                'km_atual' => $custo->km_atual,
+                'financeiro' => $custo->financeiro,
+                'pago' => $custo->pago,
+                'parcelas' => $custo->parcelas,
+                'fornecedor' => $custo->fornecedor_nome,
+                'fornecedor_id' => $custo->fornecedor_id,
+                'categoria' => $custo->categoria_nome,
+                'categoria_id' => $custo->categoria_id
+            ];
+        }
+
+        // Calcular média mensal
+        foreach ($custosPorVeiculo as &$veiculo) {
+            $veiculo['custo_medio_mensal'] = $veiculo['custo_total'] / max($veiculo['contagem'], 1);
+            $totalCustoGeral += $veiculo['custo_total'];
+            $totalCustoMensal += $veiculo['custo_medio_mensal'];
+        }
+
+        // Converter para collection
+        $dadosVeiculos = collect($custosPorVeiculo)->map(function ($item, $key) {
+            return (object)[
+                'veiculo' => (object)[
+                    'modelo' => $item['modelo'],
+                    'placa' => $item['placa'],
+                    'ano' => $item['ano']
+                ],
+                'custo_total' => $item['custo_total'],
+                'custo_medio_mensal' => $item['custo_medio_mensal'],
+                'descricoes' => $item['descricoes']
+            ];
+        })->values();
+
+        // Calcular estatísticas
+        $quantidadeVeiculos = $dadosVeiculos->count();
+        $mediaCustoTotal = $quantidadeVeiculos > 0 ? $totalCustoGeral / $quantidadeVeiculos : 0;
+        $mediaCustoMensal = $quantidadeVeiculos > 0 ? $totalCustoMensal / $quantidadeVeiculos : 0;
+
+        // Totais por status
+        $totalPago = $custosVeiculos->where('pago', 1)->sum('valor');
+        $totalPendente = $custosVeiculos->where('pago', 0)->sum('valor');
+        $totalFinanceiro = $custosVeiculos->where('financeiro', 1)->sum('valor');
+        $totalNaoFinanceiro = $custosVeiculos->where('financeiro', 0)->sum('valor');
+
+        // Filtros aplicados
+        $filtrosNomes = [];
+        if ($request->filled('fornecedor_id')) {
+            $fornecedor = Fornecedor::find($request->fornecedor_id);
+            $filtrosNomes['Fornecedor'] = $fornecedor->nome ?? $request->fornecedor_id;
+        }
+        if ($request->filled('veiculo_id')) {
+            $veiculo = \App\Models\Veiculo::find($request->veiculo_id);
+            $filtrosNomes['Veículo'] = $veiculo->modelo . ' (' . $veiculo->placa . ')' ?? $request->veiculo_id;
+        }
+        if ($request->filled('categoria_id')) {
+            $categoria = \App\Models\Categoria::find($request->categoria_id);
+            $filtrosNomes['Categoria'] = $categoria->nome ?? $request->categoria_id;
+        }
+        if ($request->filled('pago')) {
+            $filtrosNomes['Status Pagamento'] = $request->pago == 1 ? 'Pago' : 'Pendente';
+        }
+        if ($request->filled('financeiro')) {
+            $filtrosNomes['Lançado Financeiro'] = $request->financeiro == 1 ? 'Sim' : 'Não';
+        }
+
+        $pdf = PDF::loadView('pdf.custosVeiculo.relatorio', compact(
+            'dadosVeiculos',
+            'totalCustoGeral',
+            'totalCustoMensal',
+            'quantidadeVeiculos',
+            'mediaCustoTotal',
+            'mediaCustoMensal',
+            'filtrosNomes',
+            'totalPago',
+            'totalPendente',
+            'totalFinanceiro',
+            'totalNaoFinanceiro'
+        ))->setPaper('a4', 'portrait');
+
+        return $pdf->stream('relatorio_custo_veiculo.pdf');
+    }
 }

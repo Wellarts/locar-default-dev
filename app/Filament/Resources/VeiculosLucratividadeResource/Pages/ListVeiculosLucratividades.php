@@ -21,8 +21,9 @@ class ListVeiculosLucratividades extends ListRecords
     {
         return [
             Actions\Action::make('generatePdf')
-                ->label('Gerar Relatório PDF')
+                ->label('Relatório - PDF')
                 ->icon('heroicon-o-document-text')
+                ->color('info')
                 ->url(route('veiculos-lucratividade.pdf'))
                 ->openUrlInNewTab(),
         ];
