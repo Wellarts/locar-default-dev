@@ -15,7 +15,7 @@ class ManageFluxoCaixas extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Novo Lançamento')
+                ->label('Adicionar')
                 ->icon('heroicon-o-plus')
                 ->color('primary')
                 ->after(
@@ -45,8 +45,8 @@ class ManageFluxoCaixas extends ManageRecords
                 ])
                 ->action(function (array $data, $livewire) {
                     $query = http_build_query(array_filter($data));
-                 //   $url = route('relatorio.fluxo.caixa.pdf') . '?' . $query;
-                  //   $livewire->js("window.open('{$url}', '_blank')");
+                    $url = route('relatorio.fluxo.caixa.pdf') . '?' . $query;
+                     $livewire->js("window.open('{$url}', '_blank')");
                 }),
         ];
     }

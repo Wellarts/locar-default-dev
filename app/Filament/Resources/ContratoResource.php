@@ -12,12 +12,17 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use FilamentTiptapEditor\TiptapEditor;
+use FilamentTiptapEditor\Enums\TiptapControls; // Opcional, para usar Enums em vez de strings
 
 class ContratoResource extends Resource
 {
     protected static ?string $model = Contrato::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static ?string $navigationGroup = 'Locar';
+    protected static ?int $navigationSort = 2;
+    protected static ?string $navigationLabel = 'Contratos/Documentos';
 
     public static function form(Form $form): Form
     {
@@ -28,7 +33,7 @@ class ContratoResource extends Resource
                     ->columnSpanFull()
                     ->label('Título')
                     ->maxLength(255),
-                
+
                 Forms\Components\Actions::make([
                     Forms\Components\Actions\Action::make('verVariaveis')
                         ->label('📋 Ver Variáveis Disponíveis')
@@ -36,27 +41,11 @@ class ContratoResource extends Resource
                         ->icon('heroicon-o-information-circle')
                         ->url(route('contrato.variaveis'), shouldOpenInNewTab: true)
                 ])->columnSpanFull(),
-                
-                Forms\Components\RichEditor::make('descricao')
-                    ->label('Descrição')
-                    ->columnSpanFull()
-                    ->fileAttachmentsDisk('public')
-                    ->fileAttachmentsDirectory('contratos')
-                    ->toolbarButtons([
-                        'attachFiles',
-                        'blockquote',
-                        'bold',
-                        'bulletList',
-                        'codeBlock',
-                        'h2',
-                        'h3',
-                        'italic',
-                        'link',
-                        'orderedList',
-                        'redo',
-                        'strike',
-                        'undo',
-                    ]),
+
+                TiptapEditor::make('descricao')
+                            ->profile('default') // Carrega o perfil do config/filament-tiptap-editor.php
+                            ->columnSpanFull()
+                            ->profile('default')
             ]);
     }
 
@@ -64,10 +53,21 @@ class ContratoResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('id')->label('ID')->sortable(),
-                Tables\Columns\TextColumn::make('titulo')->label('Título')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('created_at')->label('Criado em')->dateTime()->sortable(),
-                Tables\Columns\TextColumn::make('updated_at')->label('Atualizado em')->dateTime()->sortable(),
+                Tables\Columns\TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('titulo')
+                    ->label('Título')
+                    ->sortable()
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Criado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->label('Atualizado em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
             ])
             ->filters([
                 //

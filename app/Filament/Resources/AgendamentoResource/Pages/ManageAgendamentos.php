@@ -14,7 +14,7 @@ class ManageAgendamentos extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Adicionar Agendamento')
+                ->label('Adicionar')
                 ->icon('heroicon-o-plus')
                 ->modalHeading('Criar Agendamento'),
         ];

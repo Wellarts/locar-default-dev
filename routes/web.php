@@ -32,3 +32,5 @@ Route::get('pdf/contasreceber',[DocumentoController::class, 'contasReceberRelato
 Route::get('pdf/contasreceber/launch',[DocumentoController::class, 'launchContasReceberRelatorio'])->name('imprimirContasReceberRelatorioLaunch');
 Route::get('/contrato/variaveis', [\App\Http\Controllers\ContratoController::class, 'variaveis'])
     ->name('contrato.variaveis');
+Route::get('pdf/lucratividade-veiculos',[DocumentoController::class, 'veiculosLucratividade'])->name('veiculos-lucratividade.pdf');
+Route::get('pdf/fluxo-caixa',[DocumentoController::class, 'fluxoCaixa'])->name('relatorio.fluxo.caixa.pdf');

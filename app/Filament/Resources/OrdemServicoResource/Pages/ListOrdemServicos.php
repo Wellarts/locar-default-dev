@@ -19,7 +19,7 @@ class ListOrdemServicos extends ListRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Nova Ordem de Serviço')
+                ->label('Adicionar')
                 ->icon('heroicon-o-plus')
                 ->modalHeading('Criar Nova Ordem de Serviço'),
                 // ->before(function($record) {

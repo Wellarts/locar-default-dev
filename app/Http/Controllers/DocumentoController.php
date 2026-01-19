@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\OrdemServico;
+use Illuminate\Support\Facades\DB;
 
 class DocumentoController extends Controller
 {
@@ -243,5 +244,67 @@ class DocumentoController extends Controller
         $params = $request->all();
         $url = route('imprimirContasReceberRelatorio') . (count($params) ? ('?' . http_build_query($params)) : '');
         return view('pdf.launch', ['url' => $url]);
+    }
+
+    public function veiculosLucratividade()
+    {
+        $veiculos = DB::table('veiculos')
+            ->leftJoinSub(
+                DB::table('locacaos')
+                    ->select('veiculo_id', DB::raw('SUM(valor_total_desconto) as total_locacoes'))
+                    ->groupBy('veiculo_id'),
+                'locacoes_agg',
+                'veiculos.id',
+                '=',
+                'locacoes_agg.veiculo_id'
+            )
+            ->leftJoinSub(
+                DB::table('custo_veiculos')
+                    ->select('veiculo_id', DB::raw('SUM(valor) as total_custos'))
+                    ->groupBy('veiculo_id'),
+                'custos_agg',
+                'veiculos.id',
+                '=',
+                'custos_agg.veiculo_id'
+            )
+            ->select(
+                'veiculos.id',
+                'veiculos.modelo',
+                'veiculos.placa',
+                DB::raw('COALESCE(locacoes_agg.total_locacoes, 0) as total_locacoes'),
+                DB::raw('COALESCE(custos_agg.total_custos, 0) as total_custos')
+            )
+            ->get()
+            ->map(function ($veiculo) {
+                $veiculo->total_locacoes = $veiculo->total_locacoes ?? 0;
+                $veiculo->total_custos = $veiculo->total_custos ?? 0;
+                $veiculo->lucratividade = $veiculo->total_locacoes - $veiculo->total_custos;
+                return $veiculo;
+            });
+        $pdf = PDF::loadView('pdf.veiculos.lucratividade', compact('veiculos'))
+            ->setPaper('a4', 'landscape');
+        return $pdf->stream('veiculos_lucratividade.pdf');
+    }
+
+    public function fluxoCaixa(Request $request)
+    {
+        $query = DB::table('fluxo_caixas');
+
+        if ($request->filled('data_de')) {
+            $query->whereDate('created_at', '>=', $request->data_de);
+        }
+        if ($request->filled('data_ate')) {
+            $query->whereDate('created_at', '<=', $request->data_ate);
+        }
+        if ($request->filled('tipo')) {
+            $query->where('tipo', $request->tipo);
+        }
+
+        $fluxoCaixa = $query->orderBy('created_at', 'asc')->get();
+
+        $pdf = PDF::loadView('pdf.fluxoCaixa.relatorio', compact('fluxoCaixa'))
+            ->setPaper('a4', 'landscape');
+
+        return $pdf->stream('fluxo_caixa_relatorio.pdf');
     }
 }

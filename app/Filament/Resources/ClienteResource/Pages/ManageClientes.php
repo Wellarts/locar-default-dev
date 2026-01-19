@@ -14,8 +14,9 @@ class ManageClientes extends ManageRecords
     {
         return [
             Actions\CreateAction::make()
-                ->label('Novo')
-                ->modalHeading('Criar Cliente'),
+                ->label('Adicionar')
+                ->icon('heroicon-o-plus')
+                ->modalHeading('Criar Novo Cliente'),
         ];
     }
 }

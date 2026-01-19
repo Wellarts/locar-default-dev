@@ -811,16 +811,16 @@ class LocacaoResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('Imprimir')
-                    ->url(fn(Locacao $record): string => route('imprimirLocacao', $record))
-                    ->label('Contrato 1')
-                    ->openUrlInNewTab(),
+                // Tables\Actions\Action::make('Imprimir')
+                //     ->url(fn(Locacao $record): string => route('imprimirLocacao', $record))
+                //     ->label('Contrato 1')
+                //     ->openUrlInNewTab(),
                 Tables\Actions\Action::make('GerarContrato')
-                    ->label('Gerar Contrato (Template)')
+                    ->label('Gerar Contrato')
                     ->icon('heroicon-o-document-text')
                     ->form([
                         Forms\Components\Select::make('contrato_id')
-                            ->label('Template de Contrato')
+                            ->label('Escolha o Modelo de Documento')
                             ->options(function () {
                                 return \App\Models\Contrato::orderBy('titulo')->pluck('titulo', 'id')->toArray();
                             })

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Locacao;
 use Illuminate\Http\Request;
-Use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use App\Models\Contrato as ContratoModel;
 use Illuminate\Support\Facades\Blade;
@@ -14,9 +14,9 @@ class Contrato extends Controller
     public function debugTemplate($contratoId)
     {
         $contrato = ContratoModel::findOrFail($contratoId);
-        
+
         $rawTemplate = $contrato->descricao ?? '';
-        
+
         // Mostrar como está armazenado
         return response()->json([
             'titulo' => $contrato->titulo,
@@ -41,32 +41,33 @@ class Contrato extends Controller
 
 
         //FORMATAR CPF
-         $CPF_LENGTH = 11;
-         $cnpj_cpf = preg_replace("/\D/", '', $locacao->Cliente->cpf_cnpj);
+        $CPF_LENGTH = 11;
+        $cnpj_cpf = preg_replace("/\D/", '', $locacao->Cliente->cpf_cnpj);
 
         if (strlen($cnpj_cpf) === $CPF_LENGTH) {
-                $cpfCnpj = preg_replace("/(\d{3})(\d{3})(\d{3})(\d{2})/", "\$1.\$2.\$3-\$4", $cnpj_cpf);
-        }
-        else {
+            $cpfCnpj = preg_replace("/(\d{3})(\d{3})(\d{3})(\d{2})/", "\$1.\$2.\$3-\$4", $cnpj_cpf);
+        } else {
             $cpfCnpj =  preg_replace("/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/", "\$1.\$2.\$3/\$4-\$5", $cnpj_cpf);
         }
 
         //FORMATAR TELEFONE
-         $tel_1 = $locacao->Cliente->telefone_1;
-         $tel_2 = $locacao->Cliente->telefone_2;
-       //  $tel_1 = " (".substr($tel_1, 0, 2).") ".substr($tel_1, 2, 5)."-".substr($tel_1, 7, 11);
-       //  $tel_2 = " (".substr($tel_2, 0, 2).") ".substr($tel_2, 2, 5)."-".substr($tel_2, 7, 11);
+        $tel_1 = $locacao->Cliente->telefone_1;
+        $tel_2 = $locacao->Cliente->telefone_2;
+        //  $tel_1 = " (".substr($tel_1, 0, 2).") ".substr($tel_1, 2, 5)."-".substr($tel_1, 7, 11);
+        //  $tel_2 = " (".substr($tel_2, 0, 2).") ".substr($tel_2, 2, 5)."-".substr($tel_2, 7, 11);
 
 
 
 
-         return pdf::loadView('pdf.locacao.contrato', compact(['locacao',
-                                                        'dataAtual',
-                                                        'cpfCnpj',
-                                                        'tel_1',
-                                                        'tel_2']))->stream();
+        return pdf::loadView('pdf.locacao.contrato', compact([
+            'locacao',
+            'dataAtual',
+            'cpfCnpj',
+            'tel_1',
+            'tel_2'
+        ]))->stream();
 
-       // return view('pdf.contrato', compact(['locacao']));
+        // return view('pdf.contrato', compact(['locacao']));
 
 
     }
@@ -107,7 +108,7 @@ class Contrato extends Controller
         $valor_total_desconto = isset($locacao->valor_total_desconto) ? number_format($locacao->valor_total_desconto, 2, ',', '.') : '';
         $valor_caucao = isset($locacao->valor_caucao) ? number_format($locacao->valor_caucao, 2, ',', '.') : '';
         $valor_desconto = isset($locacao->valor_desconto) ? number_format($locacao->valor_desconto, 2, ',', '.') : '';
-        
+
         // Formatar data de nascimento do cliente
         $cliente_data_nascimento = $cliente->data_nascimento ? Carbon::parse($cliente->data_nascimento)->format('d/m/Y') : '';
 
@@ -144,8 +145,8 @@ class Contrato extends Controller
             'veiculo_chassi' => $veiculo->chassi ?? '',
             'veiculo_ano' => $veiculo->ano ?? '',
             'veiculo_cor' => $veiculo->cor ?? '',
-            'veiculo_renavam' => $veiculo->renavam ?? '',            
-            'veiculo_km_saida' => $locacao->km_saida ?? '',           
+            'veiculo_renavam' => $veiculo->renavam ?? '',
+            'veiculo_km_saida' => $locacao->km_saida ?? '',
 
             // Datas e Valores da Locação
             'data_saida' => $data_saida_fmt,
@@ -177,10 +178,10 @@ class Contrato extends Controller
         // Primeiro remover @ prefixo
         $rawTemplate = str_replace('@{{', '{{', $rawTemplate);
         $rawTemplate = str_replace('@{{{', '{{{', $rawTemplate);
-        
+
         // Decodificar entidades HTML
         $rawTemplate = html_entity_decode($rawTemplate, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        
+
         // Normalizar entidades numéricas remanescentes
         $rawTemplate = str_replace('&#123;&#123;', '{{', $rawTemplate);
         $rawTemplate = str_replace('&#125;&#125;', '}}', $rawTemplate);
@@ -193,9 +194,9 @@ class Contrato extends Controller
         } catch (\Throwable $e) {
             // Se falhar, fazer substituição manual com regex
             \Log::warning('Blade::render falhou, usando substituição manual: ' . $e->getMessage());
-            
+
             $filledHtml = $rawTemplate;
-            
+
             // Substituir {{ $var }} por valor direto
             foreach ($data as $key => $value) {
                 if (is_scalar($value) || is_null($value)) {
@@ -207,7 +208,7 @@ class Contrato extends Controller
                     );
                 }
             }
-            
+
             // Substituir {{ $objeto->propriedade }}
             if (isset($data['cliente']) && is_object($data['cliente'])) {
                 foreach ($data['cliente']->getAttributes() as $attr => $value) {
@@ -228,7 +229,7 @@ class Contrato extends Controller
                 }
             }
         }
-        
+
         // Debug: Log das variáveis principais
         \Log::debug('Template renderizado - Variáveis:', [
             'cpfCnpj_value' => $cpfCnpj,
@@ -237,7 +238,12 @@ class Contrato extends Controller
         ]);
 
         // Gerar PDF a partir do HTML preenchido
-        $pdf = Pdf::loadHTML($filledHtml);
+        $pdf = Pdf::loadHTML($filledHtml)
+            ->setPaper('a4')
+            ->setOption('encoding', 'UTF-8');
         return $pdf->stream("contrato_locacao_{$locacao->id}.pdf");
+
+       
+
     }
 }

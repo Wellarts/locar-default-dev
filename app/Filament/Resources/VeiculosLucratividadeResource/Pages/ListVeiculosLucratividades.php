@@ -16,14 +16,19 @@ class ListVeiculosLucratividades extends ListRecords
     protected static ?string $title = 'Lucratividade dos Veículos';
 
 
+    
     protected function getHeaderActions(): array
     {
         return [
-          //  Actions\CreateAction::make(),
-           
-
+            Actions\Action::make('generatePdf')
+                ->label('Gerar Relatório PDF')
+                ->icon('heroicon-o-document-text')
+                ->url(route('veiculos-lucratividade.pdf'))
+                ->openUrlInNewTab(),
         ];
     }
+
+    
 
     protected function getHeaderWidgets(): array
     {
@@ -33,4 +38,8 @@ class ListVeiculosLucratividades extends ListRecords
 
         ];
     }
+
+    
+
+    
 }
