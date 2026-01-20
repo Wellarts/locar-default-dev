@@ -245,6 +245,7 @@ class LocacaoResource extends Resource
                                                         } else {
                                                             $set('qtd_diarias', null);
                                                         }
+                                                        self::recalcularValores($get, $set);
                                                     })
                                                     ->default(1)
                                                     ->required()
@@ -252,6 +253,33 @@ class LocacaoResource extends Resource
                                                         'xl' => 2,
                                                         '2xl' => 2,
                                                     ]),
+                                                Forms\Components\TextInput::make('qtd_diarias')
+                                                    ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #CF9A16;'])
+                                                    ->label('Qtd Dias')
+                                                    ->numeric()
+                                                    ->default(1)
+                                                    ->live(onBlur: true)
+                                                    ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                                        if (!$state || !$get('veiculo_id') || !$get('data_saida') || !$get('hora_saida')) {
+                                                            return;
+                                                        }
+
+                                                        $dataSaida = Carbon::parse($get('data_saida'));
+                                                        $dataRetorno = $dataSaida->copy()->addDays($state);
+                                                        
+                                                        $veiculo = Veiculo::select('valor_diaria')->find($get('veiculo_id'));
+                                                        if (!$veiculo) return;
+
+                                                        $valorTotal = $veiculo->valor_diaria * $state;
+
+                                                        $set('data_retorno', $dataRetorno->format('Y-m-d'));
+                                                        $set('hora_retorno', Carbon::parse($get('hora_saida'))->format('H:i'));
+                                                        $set('valor_total', $valorTotal);
+                                                        $set('valor_desconto', 0);
+                                                        $set('valor_total_desconto', $valorTotal);
+                                                    })
+                                                    ->hidden(fn(Get $get) => $get('forma_locacao') == 2)
+                                                    ->required(fn(Get $get) => $get('forma_locacao') == 1),
                                                 Forms\Components\TextInput::make('qtd_semanas')
                                                     ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #CF9A16;'])
                                                     ->label('Qtd Semanas')
@@ -280,7 +308,7 @@ class LocacaoResource extends Resource
                                                         $set('valor_total_desconto', $valorTotal);
                                                     })
                                                     ->hidden(fn(Get $get) => $get('forma_locacao') == 1)
-                                                    ->required(),
+                                                    ->required(fn(Get $get) => $get('forma_locacao') == 2),
                                             ]),
                                     ]),
                                 Fieldset::make('Datas e Valores')
@@ -335,11 +363,6 @@ class LocacaoResource extends Resource
                                                     ->inputMode('decimal')
                                                     ->currencyMask(thousandSeparator: '.', decimalSeparator: ',', precision: 2),
                                             ]),
-                                        Forms\Components\TextInput::make('qtd_diarias')
-                                            ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #CF9A16;'])
-                                            ->label('Qtd Diárias')
-                                            ->readOnly()
-                                            ->required(false),
                                         Forms\Components\TextInput::make('valor_total')
                                             ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #D33644;'])
                                             ->label('Valor Total')
@@ -593,25 +616,56 @@ class LocacaoResource extends Resource
         $dtRetorno = Carbon::parse($dataRetorno);
         $qtdDias = $dtRetorno->diffInDays($dtSaida);
 
-        $set('qtd_diarias', $qtdDias);
-
         if ($formaLocacao == 1) {
             // Diária
+            $set('qtd_diarias', $qtdDias);
             $valorTotal = $veiculo->valor_diaria * $qtdDias;
         } else {
             // Semanal
-            $qtdSemanas = $get('qtd_semanas') ?? 1;
+            $qtdSemanas = ceil($qtdDias / 7);
+            $set('qtd_semanas', $qtdSemanas);
+            // Ajustar data de retorno para semanas completas
+            $dataRetornoAjustada = $dtSaida->copy()->addWeeks($qtdSemanas);
+            $set('data_retorno', $dataRetornoAjustada->format('Y-m-d'));
             $valorTotal = $veiculo->valor_semana * $qtdSemanas;
         }
 
         $set('valor_total', $valorTotal);
         $set('valor_total_desconto', $valorTotal - ((float) ($get('valor_desconto') ?? 0)));
+
+        ### CALCULO DOS DIAS E SEMANAS
+        $diferencaEmDias = $dtSaida->diffInDays($dtRetorno);
+        // Calculando a diferença em semanas
+        $diferencaEmSemanas = $diferencaEmDias / 7;
+
+        // Arredondando para baixo para obter o número inteiro de semanas
+        $semanasCompletas = floor($diferencaEmSemanas);
+        // Calculando os dias restantes (módulo 7)
+        $diasRestantes = $diferencaEmDias % 7;
+        //Calculando os meses
+        $mesesCompleto = $diferencaEmDias / 30;
+        //Calculando os meses em número inteiro
+        $mesesCompleto = floor($mesesCompleto);
+        //Calculando semanas restantes
+        $diasRestantesMeses = $diferencaEmDias % 30;
+
+        Notification::make()
+            ->title('ATENÇÃO')
+            ->body(
+                'Para as datas escolhida temos:<br>
+            <b>' . $diferencaEmDias . ' DIA(AS).</b><br>
+            <b>' . $semanasCompletas . ' SEMANA(AS) e ' . $diasRestantes . ' DIA(AS). </b> <br>
+            <b>' . $mesesCompleto . ' MÊS/MESES  e ' . $diasRestantesMeses . ' DIA(AS).</b><br>',   
+            )
+            ->danger()
+            ->persistent()
+            ->send();
     }
 
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('id', 'desc')           
+            ->defaultSort('id', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->sortable()
@@ -777,7 +831,7 @@ class LocacaoResource extends Resource
                                         }
                                     )
                                     ->getOptionLabelFromRecordUsing(fn(Model $record) => "{$record->modelo} {$record->placa}")
-                                    ->searchable(['modelo', 'placa']),                               
+                                    ->searchable(['modelo', 'placa']),
                                 \Filament\Forms\Components\Select::make('forma_pgmto_id')
                                     ->label('Forma de Pagamento')
                                     ->relationship('formaPgmto', 'nome')

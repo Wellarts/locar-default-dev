@@ -98,7 +98,7 @@ class DocumentoController extends Controller
             // esperar valores '1' ou '0' ou 'paid'/'unpaid'
             $status = $request->status;
             if (in_array($status, ['1', '0'])) {
-                $query->where('status', (bool) $status);
+                $query->where('status', (int) $status); // Converte para inteiro, não booleano
             }
         }
         if ($request->filled('data_vencimento_inicio')) {

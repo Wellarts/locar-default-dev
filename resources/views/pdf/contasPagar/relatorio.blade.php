@@ -73,7 +73,7 @@
     }
 </style>
 
-<h1>Relatório de Contas a Pagar</h1>
+<h1>Relatório de Pagamentos</h1>
 
 <div style="text-align:right; font-size:9pt; color:#666; margin-bottom:8px;">
     Emitido em: {{ date('d/m/Y H:i') }}

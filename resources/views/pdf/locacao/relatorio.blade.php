@@ -354,8 +354,19 @@
                                     Parcelado {{ $locacao->parcelas_financeiro ?? '0' }}x
                                 </span>
                             </td>
-                        </tr>
-                    @endif
+                        </tr>                   
+                        
+                    @elseif($locacao->valor_total_financeiro > 0 && $locacao->status_pago_financeiro == 1)
+                        <tr>
+                            <td class="info-label">Pagamento:</td>
+                            <td class="info-value" colspan="3">
+                                <span class="status-badge"
+                                    style="background: #c6f6d5; color: #22543d; font-size: 7pt;">
+                                    Pago
+                                </span>
+                            </td>
+                        </tr>                   
+                    @endif                    
                     @if (!empty($locacao->obs))
                         <tr>
                             <td class="info-label">Observações:</td>

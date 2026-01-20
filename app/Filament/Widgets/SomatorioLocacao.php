@@ -33,7 +33,7 @@ class SomatorioLocacao extends BaseWidget
                 ->value('total');
         });
 
-        $totalMes = Cache::remember($cacheKeys['total_mes'], now()->addMinutes(10), function () use ($ano, $mes) {
+        $totalMes = Cache::remember($cacheKeys['total_mes'], now()->addMinutes(1), function () use ($ano, $mes) {
             $inicioMes = Carbon::create($ano, $mes, 1)->startOfMonth()->toDateString();
             $fimMes = Carbon::create($ano, $mes, 1)->endOfMonth()->toDateString();
 
@@ -43,7 +43,7 @@ class SomatorioLocacao extends BaseWidget
                 ->value('total');
         });
 
-        $totalDia = Cache::remember($cacheKeys['total_dia'], now()->addMinutes(5), function () use ($hoje) {
+        $totalDia = Cache::remember($cacheKeys['total_dia'], now()->addMinutes(1), function () use ($hoje) {
             return DB::table('locacaos')
                 ->whereDate('data_saida', $hoje)
                 ->select(DB::raw('COALESCE(SUM(valor_total_desconto), 0) as total'))

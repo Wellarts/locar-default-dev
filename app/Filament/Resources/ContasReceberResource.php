@@ -248,61 +248,66 @@ class ContasReceberResource extends Resource
                     ->label('Relatório - PDF')
                     ->color('info')
                     ->icon('heroicon-o-document-text')
-                    ->modalHeading('Filtrar Relatório - Contas a Receber')
+                    ->modalHeading('Filtrar Relatório - Recebimentos')
                     ->form([
-                        Forms\Components\Select::make('cliente_id')
-                            ->label('Cliente')
-                            ->relationship('cliente', 'nome')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+                        Forms\Components\Fieldset::make('Filtros do Relatório')
+                            ->columns(2)
+                            ->schema([
+                                Forms\Components\Select::make('cliente_id')
+                                    ->label('Cliente')
+                                    ->relationship('cliente', 'nome')
+                                    ->searchable()
+                                    ->preload()
+                                    ->nullable(),
 
-                        Forms\Components\Select::make('categoria_id')
-                            ->label('Categoria')
-                            ->relationship('categoria', 'nome')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+                                Forms\Components\Select::make('categoria_id')
+                                    ->label('Categoria')
+                                    ->relationship('categoria', 'nome')
+                                    ->searchable()
+                                    ->preload()
+                                    ->nullable(),
 
-                        Forms\Components\Select::make('forma_pgmto_id')
-                            ->label('Forma de Pagamento')
-                            ->relationship('formaPgmto', 'nome')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+                                Forms\Components\Select::make('forma_pgmto_id')
+                                    ->label('Forma de Pagamento')
+                                    ->relationship('formaPgmto', 'nome')
+                                    ->searchable()
+                                    ->preload()
+                                    ->nullable(),
 
-                        Forms\Components\Select::make('status')
-                            ->label('Recebido')
-                            ->options([
-                                '' => 'Todos',
-                                '1' => 'Sim',
-                                '0' => 'Não',
+                                Forms\Components\Select::make('status')
+                                    ->label('Recebido')
+                                    ->options([
+                                        '' => 'Todos',
+                                        '1' => 'Sim',
+                                        '0' => 'Não',
+                                    ])
+                                    ->nullable(),
+
+                                Forms\Components\DatePicker::make('data_vencimento_inicio')
+                                    ->label('Vencimento (Início)')
+                                    ->displayFormat('d/m/Y')
+                                    ->nullable(),
+
+                                Forms\Components\DatePicker::make('data_vencimento_fim')
+                                    ->label('Vencimento (Fim)')
+                                    ->displayFormat('d/m/Y')
+                                    ->nullable(),
+
+                                Forms\Components\DatePicker::make('data_recebimento_inicio')
+                                    ->label('Recebimento (Início)')
+                                    ->displayFormat('d/m/Y')
+                                    ->nullable(),
+
+                                Forms\Components\DatePicker::make('data_recebimento_fim')
+                                    ->label('Recebimento (Fim)')
+                                    ->displayFormat('d/m/Y')
+                                    ->nullable(),
                             ])
-                            ->nullable(),
-
-                        Forms\Components\DatePicker::make('data_vencimento_inicio')
-                            ->label('Vencimento (Início)')
-                            ->displayFormat('d/m/Y')
-                            ->nullable(),
-
-                        Forms\Components\DatePicker::make('data_vencimento_fim')
-                            ->label('Vencimento (Fim)')
-                            ->displayFormat('d/m/Y')
-                            ->nullable(),
-
-                        Forms\Components\DatePicker::make('data_recebimento_inicio')
-                            ->label('Recebimento (Início)')
-                            ->displayFormat('d/m/Y')
-                            ->nullable(),
-
-                        Forms\Components\DatePicker::make('data_recebimento_fim')
-                            ->label('Recebimento (Fim)')
-                            ->displayFormat('d/m/Y')
-                            ->nullable(),
                     ])
-                    ->url(function (array $data): string {
-                        $params = array_filter($data, fn($v) => $v !== null && $v !== '');
-                        return route('imprimirContasReceberRelatorioLaunch') . (count($params) ? ('?' . http_build_query($params)) : '');
+                    ->action(function (array $data, $livewire) {
+                        $query = http_build_query(array_filter($data));
+                        $url = route('imprimirContasReceberRelatorio') . '?' . $query;
+                        $livewire->js("window.open('{$url}', '_blank')");
                     }),
                 Tables\Actions\ExportAction::make()
                     ->exporter(ContasReceberExporter::class)

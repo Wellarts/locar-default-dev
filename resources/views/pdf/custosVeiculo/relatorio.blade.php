@@ -408,8 +408,8 @@
                                                             {{ $descricao['financeiro'] == 1 ? 'Financeiro' : 'Sem Financeiro' }}
                                                         </span>
                                                         @if(!empty($descricao['financeiro'] == 1 ))
-                                                            <span class="status-badge {{ $descricao['pago'] == 1 ? 'badge-pago' : 'badge-pendente' }}">
-                                                                {{ $descricao['pago'] == 1 ? 'Pago' : 'A pagar' }}
+                                                            <span class="status-badge {{ $descricao['pago'] === 'pago' ? 'badge-pago' : 'badge-pendente' }}">
+                                                                {{ $descricao['pago'] === 'pago' ? 'Pago' : 'A pagar' }}
                                                             </span>
                                                         @endif
                                                         @if(!empty($descricao['parcelas']) && $descricao['parcelas'] > 1)

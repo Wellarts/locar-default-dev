@@ -198,6 +198,7 @@ class ContasPagarResource extends Resource
                 Tables\Columns\TextColumn::make('despesa_id')
                     ->label('Despesa ID')
                     ->sortable()
+                    ->alignCenter()
                     ->searchable()
                     ->toggleable(),
                 Tables\Columns\TextColumn::make('fornecedor.nome')
@@ -215,12 +216,12 @@ class ContasPagarResource extends Resource
                     ->badge()
                     ->sortable()
                     ->color(fn($record) => $record->status ? 'success' : ($record->data_vencimento < now() ? 'danger' : 'warning'))
-                    ->toggleable(), 
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('valor_parcela')
                     ->label('Valor Parcela')
                     ->money('BRL')
                     ->summarize(Sum::make()->money('BRL')->label('Total'))
-                    ->toggleable(),  
+                    ->toggleable(),
                 Tables\Columns\IconColumn::make('status')
                     ->label('Pago')
                     ->icon(fn($record) => $record->status ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle')
@@ -230,8 +231,8 @@ class ContasPagarResource extends Resource
                     ->label('Valor Pago')
                     ->money('BRL')
                     ->summarize(Sum::make()->money('BRL')->label('Pago'))
-                    ->toggleable(), 
-               Tables\Columns\TextColumn::make('formaPgmto.nome')
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('formaPgmto.nome')
                     ->label('Forma de Pagamento')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('created_at')
@@ -289,61 +290,66 @@ class ContasPagarResource extends Resource
                     ->label('Relatório - PDF')
                     ->color('info')
                     ->icon('heroicon-o-document-text')
-                    ->modalHeading('Filtrar Relatório - Contas a Pagar')
+                    ->modalHeading('Filtrar Relatório - Pagamentos')
                     ->form([
-                        Forms\Components\Select::make('fornecedor_id')
-                            ->label('Fornecedor')
-                            ->relationship('fornecedor', 'nome')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+                        Forms\Components\Fieldset::make('Filtros do Relatório')
+                            ->columns(2)
+                            ->schema([
+                                Forms\Components\Select::make('fornecedor_id')
+                                    ->label('Fornecedor')
+                                    ->relationship('fornecedor', 'nome')
+                                    ->searchable()
+                                    ->preload()
+                                    ->nullable(),
 
-                        Forms\Components\Select::make('categoria_id')
-                            ->label('Categoria')
-                            ->relationship('categoria', 'nome')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+                                Forms\Components\Select::make('categoria_id')
+                                    ->label('Categoria')
+                                    ->relationship('categoria', 'nome')
+                                    ->searchable()
+                                    ->preload()
+                                    ->nullable(),
 
-                        Forms\Components\Select::make('forma_pgmto_id')
-                            ->label('Forma de Pagamento')
-                            ->relationship('formaPgmto', 'nome')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+                                Forms\Components\Select::make('forma_pgmto_id')
+                                    ->label('Forma de Pagamento')
+                                    ->relationship('formaPgmto', 'nome')
+                                    ->searchable()
+                                    ->preload()
+                                    ->nullable(),
 
-                        Forms\Components\Select::make('status')
-                            ->label('Pago')
-                            ->options([
-                                '' => 'Todos',
-                                '1' => 'Sim',
-                                '0' => 'Não',
+                                Forms\Components\Select::make('status')
+                                    ->label('Pago')
+                                    ->options([
+                                        '' => 'Todos',
+                                        '1' => 'Sim',
+                                        '0' => 'Não',
+                                    ])
+                                    ->nullable(),
+
+                                Forms\Components\DatePicker::make('data_vencimento_inicio')
+                                    ->label('Vencimento (Início)')
+                                    ->displayFormat('d/m/Y')
+                                    ->nullable(),
+
+                                Forms\Components\DatePicker::make('data_vencimento_fim')
+                                    ->label('Vencimento (Fim)')
+                                    ->displayFormat('d/m/Y')
+                                    ->nullable(),
+
+                                Forms\Components\DatePicker::make('data_pagamento_inicio')
+                                    ->label('Pagamento (Início)')
+                                    ->displayFormat('d/m/Y')
+                                    ->nullable(),
+
+                                Forms\Components\DatePicker::make('data_pagamento_fim')
+                                    ->label('Pagamento (Fim)')
+                                    ->displayFormat('d/m/Y')
+                                    ->nullable(),
                             ])
-                            ->nullable(),
-
-                        Forms\Components\DatePicker::make('data_vencimento_inicio')
-                            ->label('Vencimento (Início)')
-                            ->displayFormat('d/m/Y')
-                            ->nullable(),
-
-                        Forms\Components\DatePicker::make('data_vencimento_fim')
-                            ->label('Vencimento (Fim)')
-                            ->displayFormat('d/m/Y')
-                            ->nullable(),
-
-                        Forms\Components\DatePicker::make('data_pagamento_inicio')
-                            ->label('Pagamento (Início)')
-                            ->displayFormat('d/m/Y')
-                            ->nullable(),
-
-                        Forms\Components\DatePicker::make('data_pagamento_fim')
-                            ->label('Pagamento (Fim)')
-                            ->displayFormat('d/m/Y')
-                            ->nullable(),
                     ])
-                    ->url(function (array $data): string {
-                        $params = array_filter($data, fn($v) => $v !== null && $v !== '');
-                        return route('imprimirContasPagarRelatorioLaunch') . (count($params) ? ('?' . http_build_query($params)) : '');
+                    ->action(function (array $data, $livewire) {
+                        $query = http_build_query(array_filter($data));
+                        $url = route('imprimirContasPagarRelatorio') . '?' . $query;
+                        $livewire->js("window.open('{$url}', '_blank')");
                     }),
                 Tables\Actions\ExportAction::make()
                     ->exporter(ContasPagarExporter::class)
@@ -361,7 +367,7 @@ class ContasPagarResource extends Resource
                         DB::transaction(function () use ($record) {
                             // Remover registro anterior do fluxo de caixa
                             FluxoCaixa::where('contas_pagar_id', $record->id)->delete();
-                            
+
                             // Se a conta foi marcada como paga, adicionar ao fluxo de caixa
                             if ($record->status) {
                                 FluxoCaixa::create([
@@ -395,7 +401,7 @@ class ContasPagarResource extends Resource
                                 }
                             });
                         }),
-                    
+
                     Tables\Actions\BulkAction::make('marcarComoPago')
                         ->label('Marcar como pago')
                         ->icon('heroicon-o-check-circle')
@@ -413,7 +419,7 @@ class ContasPagarResource extends Resource
                                         'contas_pagar_id' => $record->id,
                                         'tipo' => 'DEBITO',
                                         'obs' => 'Pagamento da conta do fornecedor ' . $record->fornecedor->nome . ' - Forma de Pagamento: ' . ($record->formaPgmto ? $record->formaPgmto->nome : 'N/A'),
-                                        
+
                                     ]);
                                 }
                             });
@@ -448,6 +454,4 @@ class ContasPagarResource extends Resource
             'index' => Pages\ManageContasPagars::route('/'),
         ];
     }
-
-    
 }
