@@ -672,7 +672,15 @@ class LocacaoResource extends Resource
                     ->searchable()
                     ->label('ID')
                     ->toggleable(),
-
+                Tables\Columns\TextColumn::make('ocorrencias_pendentes_count')
+                    ->label('Ocorrências Pendentes')
+                    ->alignCenter()
+                    ->color(fn($state): string => $state > 0 ? 'danger' : 'success')
+                    ->icon(fn($state): ?string => $state > 0 ? 'heroicon-o-exclamation-triangle' : 'heroicon-o-check-circle')
+                    ->toggleable()
+                    ->getStateUsing(function (Locacao $record): int {
+                        return $record->ocorrencias()->where('status', false)->count();
+                    }),
                 Tables\Columns\TextColumn::make('cliente.nome')
                     ->sortable()
                     ->searchable()
