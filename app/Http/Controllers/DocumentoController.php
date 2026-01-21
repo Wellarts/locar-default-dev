@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\OrdemServico;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class DocumentoController extends Controller
 {
@@ -81,6 +82,8 @@ class DocumentoController extends Controller
         return $pdf->stream('locacoes_relatorio.pdf');
     }
 
+
+
     public function contasPagarRelatorio(Request $request)
     {
         $query = ContasPagar::query()->with(['fornecedor', 'categoria', 'formaPgmto']);
@@ -94,13 +97,18 @@ class DocumentoController extends Controller
         if ($request->filled('forma_pgmto_id')) {
             $query->where('forma_pgmto_id', $request->forma_pgmto_id);
         }
-        if ($request->filled('status')) {
-            // esperar valores '1' ou '0' ou 'paid'/'unpaid'
-            $status = $request->status;
-            if (in_array($status, ['1', '0'])) {
-                $query->where('status', (int) $status); // Converte para inteiro, não booleano
+
+        // CORREÇÃO: Tratar o status de forma mais robusta
+        if ($request->has('status') && $request->status !== 'todos') {
+            $status = $request->input('status');
+
+            if ($status === '0') {
+                $query->where('status', false);
+            } elseif ($status === '1') {
+                $query->where('status', true);
             }
         }
+
         if ($request->filled('data_vencimento_inicio')) {
             $query->whereDate('data_vencimento', '>=', $request->data_vencimento_inicio);
         }
@@ -130,13 +138,11 @@ class DocumentoController extends Controller
             $fp = FormaPagamento::find($request->forma_pgmto_id);
             $filtrosNomes['Forma Pagamento'] = $fp->nome ?? $request->forma_pgmto_id;
         }
-        if ($request->filled('status')) {
-            $st = $request->status;
-            if ($st === '1' || $st === 1 || $st === true) {
-                $filtrosNomes['Pago'] = 'Sim';
-            } elseif ($st === '0' || $st === 0 || $st === false) {
-                $filtrosNomes['Pago'] = 'Não';
-            }
+
+        // CORREÇÃO: Exibir corretamente o filtro de status
+        if ($request->has('status') && $request->status !== 'todos') {
+            $statusValue = $request->input('status');
+            $filtrosNomes['Pago'] = $statusValue === '1' ? 'Sim' : 'Não';
         }
 
         if ($request->filled('data_vencimento_inicio')) {

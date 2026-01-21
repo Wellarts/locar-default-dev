@@ -266,7 +266,7 @@ class LocacaoResource extends Resource
 
                                                         $dataSaida = Carbon::parse($get('data_saida'));
                                                         $dataRetorno = $dataSaida->copy()->addDays($state);
-                                                        
+
                                                         $veiculo = Veiculo::select('valor_diaria')->find($get('veiculo_id'));
                                                         if (!$veiculo) return;
 
@@ -655,7 +655,7 @@ class LocacaoResource extends Resource
                 'Para as datas escolhida temos:<br>
             <b>' . $diferencaEmDias . ' DIA(AS).</b><br>
             <b>' . $semanasCompletas . ' SEMANA(AS) e ' . $diasRestantes . ' DIA(AS). </b> <br>
-            <b>' . $mesesCompleto . ' MÊS/MESES  e ' . $diasRestantesMeses . ' DIA(AS).</b><br>',   
+            <b>' . $mesesCompleto . ' MÊS/MESES  e ' . $diasRestantesMeses . ' DIA(AS).</b><br>',
             )
             ->danger()
             ->persistent()
@@ -796,14 +796,6 @@ class LocacaoResource extends Resource
                     })
             ])
             ->headerActions([
-                ExportAction::make()
-                    ->exporter(LocacaoExporter::class)
-                    ->formats([
-                        ExportFormat::Xlsx,
-                    ])
-                    ->columnMapping(false)
-                    ->label('Exportar')
-                    ->modalHeading('Confirmar exportação?'),
                 Tables\Actions\Action::make('relatorio')
                     ->label('Relatório - PDF')
                     ->icon('heroicon-o-printer')
@@ -859,10 +851,26 @@ class LocacaoResource extends Resource
                         if (!empty($data['data_saida'])) $params['data_saida'] = $data['data_saida'];
                         if (!empty($data['data_retorno'])) $params['data_retorno'] = $data['data_retorno'];
                         if (!empty($data['status'])) $params['status'] = $data['status'];
-                        $queryString = http_build_query($params);
-                        $url = route('imprimirLocacoesRelatorio') . ($queryString ? ('?' . $queryString) : '');
+                        $filteredData = [];
+                        foreach ($data as $key => $value) {
+                            if ($value !== '' && $value !== null) {
+                                $filteredData[$key] = $value;
+                            }
+                        }
+
+                        $query = http_build_query($filteredData);
+                        //  dd($query);
+                        $url = route('imprimirLocacoesRelatorio') . ($query ? ('?' . $query) : '');
                         $livewire->js("window.open('{$url}', '_blank')");
                     }),
+                ExportAction::make()
+                    ->exporter(LocacaoExporter::class)
+                    ->formats([
+                        ExportFormat::Xlsx,
+                    ])
+                    ->columnMapping(false)
+                    ->label('Exportar')
+                    ->modalHeading('Confirmar exportação?'),
             ])
             ->actions([
                 // Tables\Actions\Action::make('Imprimir')

@@ -317,7 +317,7 @@ class ContasPagarResource extends Resource
                                     ->nullable(),
 
                                 Forms\Components\Select::make('status')
-                                    ->label('Pago')
+                                    ->label('Recebido')
                                     ->options([
                                         '' => 'Todos',
                                         '1' => 'Sim',
@@ -347,7 +347,15 @@ class ContasPagarResource extends Resource
                             ])
                     ])
                     ->action(function (array $data, $livewire) {
-                        $query = http_build_query(array_filter($data));
+                        // Remove apenas as chaves com valores vazios ou nulos, mas mantém 0
+                        $filteredData = [];
+                        foreach ($data as $key => $value) {
+                            if ($value !== '' && $value !== null) {
+                                $filteredData[$key] = $value;
+                            }
+                        }
+
+                        $query = http_build_query($filteredData);
                         $url = route('imprimirContasPagarRelatorio') . '?' . $query;
                         $livewire->js("window.open('{$url}', '_blank')");
                     }),

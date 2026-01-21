@@ -31,7 +31,7 @@ class ContasPagar extends Model
     protected $casts = [
         'data_vencimento' => 'date',
         'data_pagamento' => 'date',
-        'status' => 'boolean',
+       // 'status' => 'boolean',
         'valor_total' => 'decimal:2',
         'valor_parcela' => 'decimal:2',
         'valor_pago' => 'decimal:2',

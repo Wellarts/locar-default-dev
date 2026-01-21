@@ -290,7 +290,7 @@
                     <tr>
                         <td class="info-label">Veículo:</td>
                         <td class="info-value">
-                            {{ $locacao->veiculo->modelo ?? $locacao->veiculo_id }}</td>
+                            {{ $locacao->veiculo->modelo. ' - ' .$locacao->veiculo->placa ?? $locacao->veiculo_id }}</td>
                         <td class="info-label">Forma Pagto:</td>
                         <td class="info-value">
                             {{ $locacao->formaPgmto->nome ?? ($locacao->forma_pgmto_id ?? '—') }}</td>
@@ -331,7 +331,7 @@
                             {{ number_format($locacao->valor_caucao ?? 0, 2, ',', '.') }}</td>
                         <td class="info-label">Status:</td>
                         <td class="info-value">
-                            <span class="status-badge">{{ $locacao->status == 0 ? 'Ativa' : 'Finalizada' }}</span>
+                            <span class="status-badge">{{ $locacao->status == 0 ? 'Aberta' : 'Finalizada' }}</span>
                         </td>
                     </tr>
                     <tr>
