@@ -208,7 +208,7 @@
                         $p = null;
                     }
                     $companyName = $p->empresa_nome ?? ($p->nome_empresa ?? ($p->nome ?? 'Nome da Empresa'));
-                    $companyCnpj = $p->cnpj ?? '00.000.000/0000-00';
+                    $companyCnpj = $p->cpf_cnpj ?? '00.000.000/0000-00';
                     $companyAddress = $p->endereco_completo ?? 'Sem Endereço Informado';
                     $companyPhones = $p->telefone ?? '(00) 0000-0000';
                     $companyInsta = $p->redes_sociais ?? '@empresa';
