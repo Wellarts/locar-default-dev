@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,15 +12,17 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
         }
+
         .container {
             max-width: 900px;
             background-color: white;
             border-radius: 10px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
             padding: 30px;
             margin-top: 30px;
             margin-bottom: 30px;
         }
+
         .header {
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
             color: white;
@@ -27,6 +30,7 @@
             border-radius: 10px;
             margin-bottom: 30px;
         }
+
         .variable-card {
             background-color: #f8f9fa;
             border-left: 4px solid #3b82f6;
@@ -34,6 +38,7 @@
             margin-bottom: 10px;
             border-radius: 0 8px 8px 0;
         }
+
         .variable-code {
             background-color: #1e293b;
             color: #e2e8f0;
@@ -43,19 +48,23 @@
             font-size: 16px;
             margin: 0;
         }
+
         .copy-btn {
             cursor: pointer;
             transition: all 0.3s;
         }
+
         .copy-btn:hover {
             transform: scale(1.05);
         }
+
         .example-box {
             background-color: #fef3c7;
             border-left: 4px solid #f59e0b;
             padding: 20px;
             border-radius: 0 8px 8px 0;
         }
+
         .section-title {
             color: #1e40af;
             border-bottom: 2px solid #e5e7eb;
@@ -63,8 +72,29 @@
             margin-bottom: 20px;
             font-weight: 600;
         }
+
+        .logo-example {
+            background-color: #e0f2fe;
+            border-left: 4px solid #0ea5e9;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+        }
+
+        .code-block {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+            margin: 10px 0;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header text-center">
@@ -76,202 +106,209 @@
         <div class="alert alert-info">
             <h5>💡 Como usar</h5>
             <p class="mb-0">1. Selecione e copie as variáveis abaixo<br>
-            2. Cole no campo "Descrição" do contrato<br>
-            3. Ao gerar o contrato, as variáveis serão substituídas pelos dados reais</p>
+                2. Cole no campo "Descrição" do contrato<br>
+                3. Ao gerar o contrato, as variáveis serão substituídas pelos dados reais</p>
+        </div>
+
+        <!-- Logo da Empresa -->
+        <h3 class="section-title">🏢 Logo da Empresa</h3>
+
+
+
+        <div class="row">
+            <div class="col-md-12 mb-3">
+                <div class="variable-card d-flex justify-content-between align-items-center">
+                    <div>
+                        <p class="variable-code mb-1">&#123;&#33;&#33; $logo_raw &#33;&#33;&#125;</p>
+                        <small class="text-muted">HTML completo da logo posicionada (recomendado)</small>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary copy-btn"
+                        data-clipboard-text="&#123;&#33;&#33; $logo_raw &#33;&#33;&#125;">
+                        Copiar
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Informações do Cliente -->
         <h3 class="section-title">👤 Informações do Cliente</h3>
         <div class="row">
-            @php
-                $clienteVars = [
-                    '{{ $cliente_nome }}' => 'Nome completo',
-                    '{{ $cpfCnpj }}' => 'CPF ou CNPJ',
-                    '{{ $cliente_endereco }}' => 'Endereço completo',
-                    '{{ $cliente_estado }}' => 'Estado',
-                    '{{ $cliente_cidade }}' => 'Cidade',
-                    '{{ $cliente_telefone_1 }}' => 'Telefone 1',
-                    '{{ $cliente_telefone_2 }}' => 'Telefone 2',
-                    '{{ $cliente_email }}' => 'E-mail',                    
-                    '{{ $cliente_rede_social }}' => 'Rede social',
-                    '{{ $cliente_cnh }}' => 'Número da CNH',
-                    '{{ $cliente_validade_cnh }}' => 'Validade da CNH',
-                    '{{ $cliente_rg }}' => 'RG',
-                    '{{ $cliente_orgao_emissor }}' => 'Órgão emissor',
-                    '{{ $cliente_uf_rg }}' => 'UF do RG',
-                    '{{ $cliente_data_nascimento }}' => 'Data de nascimento',                
-                   
-                ];
-            @endphp
+            <?php
+            $clienteVars = [
+                'cliente_nome' => 'Nome completo',
+                'cpfCnpj' => 'CPF ou CNPJ formatado',
+                'cliente_cpf_cnpj' => 'CPF/CNPJ (sem formatação)',
+                'cliente_endereco' => 'Endereço completo',
+                'cliente_estado' => 'Estado',
+                'cliente_cidade' => 'Cidade',
+                'cliente_telefone_1' => 'Telefone 1',
+                'cliente_telefone_2' => 'Telefone 2',
+                'telefone_1' => 'Telefone 1 (formato alternativo)',
+                'telefone_2' => 'Telefone 2 (formato alternativo)',
+                'cliente_email' => 'E-mail',
+                'cliente_rede_social' => 'Rede social',
+                'cliente_cnh' => 'Número da CNH',
+                'cliente_validade_cnh' => 'Validade da CNH (dd/mm/aaaa)',
+                'cliente_rg' => 'RG',
+                'cliente_orgao_emissor' => 'Órgão emissor do RG',
+                'cliente_uf_rg' => 'UF do RG',
+                'cliente_data_nascimento' => 'Data de nascimento (dd/mm/aaaa)',
+            ];
             
-            @foreach($clienteVars as $var => $desc)
-            <div class="col-md-6 mb-3">
-                <div class="variable-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="variable-code mb-1">{{ $var }}</p>
-                        <small class="text-muted">{{ $desc }}</small>
-                    </div>
-                    <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="{{ $var }}">
-                        Copiar
-                    </button>
-                </div>
-            </div>
-            @endforeach
+            foreach ($clienteVars as $var => $desc) {
+                echo '<div class="col-md-6 mb-3">';
+                echo '    <div class="variable-card d-flex justify-content-between align-items-center">';
+                echo '        <div>';
+                echo '            <p class="variable-code mb-1">&#123;&#123; $' . $var . ' &#125;&#125;</p>';
+                echo '            <small class="text-muted">' . $desc . '</small>';
+                echo '        </div>';
+                echo '        <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="&#123;&#123; $' . $var . ' &#125;&#125;">';
+                echo '            Copiar';
+                echo '        </button>';
+                echo '    </div>';
+                echo '</div>';
+            }
+            ?>
         </div>
 
         <!-- Dados do Veículo -->
         <h3 class="section-title mt-4">🚗 Dados do Veículo</h3>
         <div class="row">
-            @php
-                $veiculoVars = [
-                    '{{ $veiculo_marca }}' => 'Marca',
-                    '{{ $veiculo_modelo }}' => 'Modelo',
-                    '{{ $veiculo_placa }}' => 'Placa',
-                    '{{ $veiculo_ano }}' => 'Ano',
-                    '{{ $veiculo_cor }}' => 'Cor',
-                    '{{ $veiculo_chassi }}' => 'Chassi',
-                    '{{ $veiculo_renavam }}' => 'Renavam',
-                    '{{ $veiculo_km_saida }}' => 'KM de saída',
-                ];
-            @endphp
+            <?php
+            $veiculoVars = [
+                'veiculo_marca' => 'Marca',
+                'veiculo_modelo' => 'Modelo',
+                'veiculo_placa' => 'Placa',
+                'veiculo_ano' => 'Ano',
+                'veiculo_cor' => 'Cor',
+                'veiculo_chassi' => 'Chassi',
+                'veiculo_renavam' => 'Renavam',
+                'veiculo_km_saida' => 'KM de saída',
+            ];
             
-            @foreach($veiculoVars as $var => $desc)
-            <div class="col-md-6 mb-3">
-                <div class="variable-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="variable-code mb-1">{{ $var }}</p>
-                        <small class="text-muted">{{ $desc }}</small>
-                    </div>
-                    <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="{{ $var }}">
-                        Copiar
-                    </button>
-                </div>
-            </div>
-            @endforeach
+            foreach ($veiculoVars as $var => $desc) {
+                echo '<div class="col-md-6 mb-3">';
+                echo '    <div class="variable-card d-flex justify-content-between align-items-center">';
+                echo '        <div>';
+                echo '            <p class="variable-code mb-1">&#123;&#123; $' . $var . ' &#125;&#125;</p>';
+                echo '            <small class="text-muted">' . $desc . '</small>';
+                echo '        </div>';
+                echo '        <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="&#123;&#123; $' . $var . ' &#125;&#125;">';
+                echo '            Copiar';
+                echo '        </button>';
+                echo '    </div>';
+                echo '</div>';
+            }
+            ?>
         </div>
 
         <!-- Datas e Valores -->
         <h3 class="section-title mt-4">📅 Datas e Valores da Locação</h3>
         <div class="row">
-            @php
-                $dataVars = [
-                    '{{ $data_saida }}' => 'Data de saída',
-                    '{{ $data_retorno }}' => 'Data de retorno',
-                    '{{ $hora_saida }}' => 'Hora de saída',
-                    '{{ $hora_retorno }}' => 'Hora de retorno',
-                    '{{ $qtd_diarias }}' => 'Quantidade de diárias',
-                    '{{ $qtd_semanas }}' => 'Quantidade de semanas',
-                    '{{ $valor_total }}' => 'Valor total (R$)',
-                    '{{ $valor_desconto }}' => 'Valor do desconto (R$)',
-                    '{{ $valor_total_desconto }}' => 'Valor total com desconto (R$)',
-                    '{{ $valor_caucao }}' => 'Caução (R$)',
-                    '{{ $data_hoje }}' => 'Data de hoje',
-                    '{{ $observacoes }}' => 'Observações adicionais',
-                ];
-            @endphp
+            <?php
+            $dataVars = [
+                'data_saida' => 'Data de saída (dd/mm/aaaa)',
+                'data_retorno' => 'Data de retorno (dd/mm/aaaa)',
+                'hora_saida' => 'Hora de saída',
+                'hora_retorno' => 'Hora de retorno',
+                'qtd_diarias' => 'Quantidade de diárias',
+                'qtd_semanas' => 'Quantidade de semanas',
+                'valor_total' => 'Valor total (R$)',
+                'valor_desconto' => 'Valor do desconto (R$)',
+                'valor_total_desconto' => 'Valor total com desconto (R$)',
+                'valor_caucao' => 'Caução (R$)',
+                'data_hoje' => 'Data de hoje (dd/mm/aaaa)',
+                'observacoes' => 'Observações adicionais',
+            ];
             
-            @foreach($dataVars as $var => $desc)
-            <div class="col-md-6 mb-3">
-                <div class="variable-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="variable-code mb-1">{{ $var }}</p>
-                        <small class="text-muted">{{ $desc }}</small>
-                    </div>
-                    <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="{{ $var }}">
-                        Copiar
-                    </button>
-                </div>
-            </div>
-            @endforeach
+            foreach ($dataVars as $var => $desc) {
+                echo '<div class="col-md-6 mb-3">';
+                echo '    <div class="variable-card d-flex justify-content-between align-items-center">';
+                echo '        <div>';
+                echo '            <p class="variable-code mb-1">&#123;&#123; $' . $var . ' &#125;&#125;</p>';
+                echo '            <small class="text-muted">' . $desc . '</small>';
+                echo '        </div>';
+                echo '        <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="&#123;&#123; $' . $var . ' &#125;&#125;">';
+                echo '            Copiar';
+                echo '        </button>';
+                echo '    </div>';
+                echo '</div>';
+            }
+            ?>
         </div>
 
-         <!-- Datas e Valores -->
-        <h3 class="section-title mt-4">📅 Assinaturas</h3>
+        <!-- Testemunhas e Fiador -->
+        <h3 class="section-title mt-4">📝 Assinaturas</h3>
         <div class="row">
-            @php
-                $dataVars = [
-                    '{{ $testemunha_1 }}' => 'Nome da Testemunha 1',
-                    '{{ $testemunha_2 }}' => 'Nome da Testemunha 2',
-                    '{{ $testemunha_1_rg }}' => 'RG da Testemunha 1',
-                    '{{ $testemunha_2_rg }}' => 'RG da Testemunha 2',
-                    '{{ $fiador }}' => 'Nome do Fiador',
-                    '{{ $dados_fiador }}' => 'Dados do Fiador',
-                ];
-            @endphp
+            <?php
+            $assinaturaVars = [
+                'testemunha_1' => 'Nome da Testemunha 1',
+                'testemunha_2' => 'Nome da Testemunha 2',
+                'testemunha_1_rg' => 'RG da Testemunha 1',
+                'testemunha_2_rg' => 'RG da Testemunha 2',
+                'fiador' => 'Nome do Fiador',
+                'dados_fiador' => 'Dados do Fiador',
+            ];
             
-            @foreach($dataVars as $var => $desc)
-            <div class="col-md-6 mb-3">
-                <div class="variable-card d-flex justify-content-between align-items-center">
-                    <div>
-                        <p class="variable-code mb-1">{{ $var }}</p>
-                        <small class="text-muted">{{ $desc }}</small>
-                    </div>
-                    <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="{{ $var }}">
-                        Copiar
-                    </button>
-                </div>
-            </div>
-            @endforeach
+            foreach ($assinaturaVars as $var => $desc) {
+                echo '<div class="col-md-6 mb-3">';
+                echo '    <div class="variable-card d-flex justify-content-between align-items-center">';
+                echo '        <div>';
+                echo '            <p class="variable-code mb-1">&#123;&#123; $' . $var . ' &#125;&#125;</p>';
+                echo '            <small class="text-muted">' . $desc . '</small>';
+                echo '        </div>';
+                echo '        <button class="btn btn-sm btn-outline-primary copy-btn" data-clipboard-text="&#123;&#123; $' . $var . ' &#125;&#125;">';
+                echo '            Copiar';
+                echo '        </button>';
+                echo '    </div>';
+                echo '</div>';
+            }
+            ?>
         </div>
 
-       
+        <!-- Exemplo de contrato completo -->
 
-        <!-- Botão de Fechar -->
-        <div class="text-center mt-4">
-            <button onclick="window.close()" class="btn btn-secondary">
-                Fechar Esta Janela
-            </button>
-            <p class="text-muted mt-2 small">Esta página pode ser fechada após copiar as variáveis necessárias</p>
-        </div>
-    </div>
 
-    <!-- Clipboard.js -->
-    <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
-    <script>
-        // Inicializar Clipboard.js
-        new ClipboardJS('.copy-btn');
-        
-        // Feedback ao copiar
-        document.querySelectorAll('.copy-btn').forEach(button => {
-            button.addEventListener('click', function() {
-                const originalText = this.innerHTML;
-                this.innerHTML = '✓ Copiado!';
-                this.classList.remove('btn-outline-primary');
-                this.classList.add('btn-success');
-                
-                setTimeout(() => {
-                    this.innerHTML = originalText;
-                    this.classList.remove('btn-success');
-                    this.classList.add('btn-outline-primary');
-                }, 2000);
+        <!-- Clipboard.js -->
+        <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+        <script>
+            // Inicializar Clipboard.js
+            new ClipboardJS('.copy-btn');
+
+            // Feedback ao copiar
+            document.querySelectorAll('.copy-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '✓ Copiado!';
+                    this.classList.remove('btn-outline-primary');
+                    this.classList.add('btn-success');
+
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-outline-primary');
+                    }, 2000);
+                });
             });
-        });
-        
-        // Botão para copiar tudo
-        // const copyAllBtn = document.createElement('button');
-        // copyAllBtn.className = 'btn btn-primary mb-4';
-        // copyAllBtn.innerHTML = '📋 Copiar Todas as Variáveis';
-        // document.querySelector('.alert').after(copyAllBtn);
-        
-        copyAllBtn.addEventListener('click', function() {
-            let allVars = '';
-            document.querySelectorAll('.variable-code').forEach(code => {
-                allVars += code.textContent + '\n';
+
+            // Botão para copiar exemplo completo
+            document.getElementById('copy-example-btn').addEventListener('click', function() {
+                const exampleCode = document.querySelector('.example-box .code-block').textContent;
+
+                navigator.clipboard.writeText(exampleCode).then(() => {
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '✓ Exemplo copiado!';
+                    this.classList.remove('btn-primary');
+                    this.classList.add('btn-success');
+
+                    setTimeout(() => {
+                        this.innerHTML = originalText;
+                        this.classList.remove('btn-success');
+                        this.classList.add('btn-primary');
+                    }, 3000);
+                });
             });
-            
-            navigator.clipboard.writeText(allVars).then(() => {
-                const originalText = this.innerHTML;
-                this.innerHTML = '✓ Todas as variáveis copiadas!';
-                this.classList.remove('btn-primary');
-                this.classList.add('btn-success');
-                
-                setTimeout(() => {
-                    this.innerHTML = originalText;
-                    this.classList.remove('btn-success');
-                    this.classList.add('btn-primary');
-                }, 3000);
-            });
-        });
-    </script>
+        </script>
 </body>
+
 </html>

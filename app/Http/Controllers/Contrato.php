@@ -29,6 +29,36 @@ class Contrato extends Controller
             'first_500_chars' => substr($rawTemplate, 0, 500),
         ]);
     }
+    
+    public function testLogo()
+    {
+        $parametros = \App\Models\Parametro::first();
+        
+        if (!$parametros) {
+            return response()->json(['error' => 'Parâmetros não encontrados']);
+        }
+        
+        $logoPath = storage_path('app/public/' . $parametros->logo);
+        $logoBase64 = null;
+        $logo_html = '';
+        
+        if ($parametros->logo && file_exists($logoPath)) {
+            $imageData = file_get_contents($logoPath);
+            $logoBase64 = 'data:image/' . pathinfo($logoPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode($imageData);
+            $logo_html = '<div style="position: absolute; top: 20px; left: 20px; border: 2px solid red;"><img src="' . $logoBase64 . '" alt="Logo" style="max-height: 80px;"></div>';
+            
+            return response("<html><body>{$logo_html}<h1>Teste de Logo</h1><p>Se você vê a logo acima com borda vermelha, está funcionando.</p><p>Caminho: {$logoPath}</p></body></html>");
+        }
+        
+        return response()->json([
+            'parametros' => $parametros->toArray(),
+            'logo_field' => $parametros->logo,
+            'logo_path' => $logoPath,
+            'file_exists' => file_exists($logoPath),
+            'storage_path' => storage_path('app/public/'),
+            'logo_html' => $logo_html
+        ]);
+    }
 
     public function printLocacao($id)
     {
@@ -36,9 +66,6 @@ class Contrato extends Controller
         $locacao = Locacao::find($id);
         Carbon::setLocale('pt-BR');
         $dataAtual = Carbon::now();
-
-
-
 
         //FORMATAR CPF
         $CPF_LENGTH = 11;
@@ -53,11 +80,6 @@ class Contrato extends Controller
         //FORMATAR TELEFONE
         $tel_1 = $locacao->Cliente->telefone_1;
         $tel_2 = $locacao->Cliente->telefone_2;
-        //  $tel_1 = " (".substr($tel_1, 0, 2).") ".substr($tel_1, 2, 5)."-".substr($tel_1, 7, 11);
-        //  $tel_2 = " (".substr($tel_2, 0, 2).") ".substr($tel_2, 2, 5)."-".substr($tel_2, 7, 11);
-
-
-
 
         return pdf::loadView('pdf.locacao.contrato', compact([
             'locacao',
@@ -66,10 +88,6 @@ class Contrato extends Controller
             'tel_1',
             'tel_2'
         ]))->stream();
-
-        // return view('pdf.contrato', compact(['locacao']));
-
-
     }
 
     /**
@@ -79,6 +97,34 @@ class Contrato extends Controller
     {
         $locacao = Locacao::with(['Cliente', 'Veiculo', 'Veiculo.Marca', 'Cliente.Cidade', 'Cliente.Estado'])->findOrFail($locacaoId);
         $contrato = ContratoModel::findOrFail($contratoId);
+        
+        // BUSCAR LOGO DOS PARÂMETROS
+        $parametros = \App\Models\Parametro::first();
+        $logoBase64 = null;
+        $logo_html = '';
+        $logo_raw = '';
+        
+        if ($parametros && $parametros->logo) {
+            \Log::info('Tentando carregar logo: ' . $parametros->logo);
+            $logoPath = storage_path('app/public/' . $parametros->logo);
+            
+            if (file_exists($logoPath)) {
+                \Log::info('Logo encontrada em: ' . $logoPath);
+                try {
+                    $imageData = file_get_contents($logoPath);
+                    $logoBase64 = 'data:image/' . pathinfo($logoPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode($imageData);
+                    $logo_html = '<div style="position: absolute; top: 20px; left: 20px;"><img src="' . $logoBase64 . '" alt="Logo" style="max-height: 80px;"></div>';
+                    $logo_raw = $logo_html; // Mesmo conteúdo, mas será usado com {!! !!}
+                    \Log::info('Logo convertida com sucesso. Tamanho base64: ' . strlen($logoBase64));
+                } catch (\Exception $e) {
+                    \Log::error('Erro ao converter logo: ' . $e->getMessage());
+                }
+            } else {
+                \Log::warning('Arquivo de logo não encontrado: ' . $logoPath);
+            }
+        } else {
+            \Log::info('Nenhuma logo configurada nos parâmetros');
+        }
 
         $dataAtual = Carbon::now();
 
@@ -113,6 +159,14 @@ class Contrato extends Controller
         $cliente_data_nascimento = $cliente->data_nascimento ? Carbon::parse($cliente->data_nascimento)->format('d/m/Y') : '';
 
         $data = [
+            // Logo como string base64 (para uso em src da imagem)
+            'logo' => $logoBase64,
+            // Logo como HTML completo (para facilitar a implementação)
+            'logo_html' => $logo_html,
+            // Logo como HTML sem escape (para uso com {!! !!})
+            'logo_raw' => $logo_raw,
+            
+            // Dados existentes
             'locacao' => $locacao,
             'cliente' => $cliente,
             'veiculo' => $veiculo,
@@ -200,12 +254,20 @@ class Contrato extends Controller
             // Substituir {{ $var }} por valor direto
             foreach ($data as $key => $value) {
                 if (is_scalar($value) || is_null($value)) {
-                    // Simples: {{ $varname }}
-                    $filledHtml = preg_replace(
-                        '/\{\{\s*\$' . preg_quote($key) . '\s*\}\}/',
-                        htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'),
-                        $filledHtml
-                    );
+                    // Para variáveis de HTML, não usar htmlspecialchars
+                    if (in_array($key, ['logo_html', 'logo_raw'])) {
+                        $filledHtml = preg_replace(
+                            '/\{\{\s*\$' . preg_quote($key) . '\s*\}\}/',
+                            (string)$value,
+                            $filledHtml
+                        );
+                    } else {
+                        $filledHtml = preg_replace(
+                            '/\{\{\s*\$' . preg_quote($key) . '\s*\}\}/',
+                            htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'),
+                            $filledHtml
+                        );
+                    }
                 }
             }
 
@@ -231,10 +293,14 @@ class Contrato extends Controller
         }
 
         // Debug: Log das variáveis principais
-        \Log::debug('Template renderizado - Variáveis:', [
-            'cpfCnpj_value' => $cpfCnpj,
-            'template_has_cpfCnpj' => strpos($rawTemplate, 'cpfCnpj') !== false,
-            'filled_has_cpfCnpj' => strpos($filledHtml, 'cpfCnpj') !== false,
+        \Log::debug('Template renderizado - Logo:', [
+            'logo_path' => $parametros->logo ?? 'Nenhuma',
+            'logo_html' => $logo_html ? 'Definida' : 'Vazia',
+            'logo_raw' => $logo_raw ? 'Definida' : 'Vazia',
+            'template_has_logo_html' => strpos($rawTemplate, 'logo_html') !== false,
+            'template_has_logo_raw' => strpos($rawTemplate, 'logo_raw') !== false,
+            'filled_has_logo_html' => strpos($filledHtml, 'logo_html') !== false,
+            'filled_has_logo_raw' => strpos($filledHtml, 'logo_raw') !== false,
         ]);
 
         // Gerar PDF a partir do HTML preenchido
@@ -242,8 +308,5 @@ class Contrato extends Controller
             ->setPaper('a4')
             ->setOption('encoding', 'UTF-8');
         return $pdf->stream("contrato_locacao_{$locacao->id}.pdf");
-
-       
-
     }
 }
