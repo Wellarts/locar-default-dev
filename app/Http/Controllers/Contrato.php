@@ -8,6 +8,8 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use App\Models\Contrato as ContratoModel;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\FacadesLog;
 
 class Contrato extends Controller
 {
@@ -105,25 +107,25 @@ class Contrato extends Controller
         $logo_raw = '';
         
         if ($parametros && $parametros->logo) {
-            \Log::info('Tentando carregar logo: ' . $parametros->logo);
+            Log::info('Tentando carregar logo: ' . $parametros->logo);
             $logoPath = storage_path('app/public/' . $parametros->logo);
             
             if (file_exists($logoPath)) {
-                \Log::info('Logo encontrada em: ' . $logoPath);
+                Log::info('Logo encontrada em: ' . $logoPath);
                 try {
                     $imageData = file_get_contents($logoPath);
                     $logoBase64 = 'data:image/' . pathinfo($logoPath, PATHINFO_EXTENSION) . ';base64,' . base64_encode($imageData);
                     $logo_html = '<div style="position: absolute; top: 20px; left: 20px;"><img src="' . $logoBase64 . '" alt="Logo" style="max-height: 80px;"></div>';
                     $logo_raw = $logo_html; // Mesmo conteúdo, mas será usado com {!! !!}
-                    \Log::info('Logo convertida com sucesso. Tamanho base64: ' . strlen($logoBase64));
+                    Log::info('Logo convertida com sucesso. Tamanho base64: ' . strlen($logoBase64));
                 } catch (\Exception $e) {
-                    \Log::error('Erro ao converter logo: ' . $e->getMessage());
+                    Log::error('Erro ao converter logo: ' . $e->getMessage());
                 }
             } else {
-                \Log::warning('Arquivo de logo não encontrado: ' . $logoPath);
+                Log::warning('Arquivo de logo não encontrado: ' . $logoPath);
             }
         } else {
-            \Log::info('Nenhuma logo configurada nos parâmetros');
+            Log::info('Nenhuma logo configurada nos parâmetros');
         }
 
         $dataAtual = Carbon::now();
@@ -247,7 +249,7 @@ class Contrato extends Controller
             $filledHtml = Blade::render($rawTemplate, $data);
         } catch (\Throwable $e) {
             // Se falhar, fazer substituição manual com regex
-            \Log::warning('Blade::render falhou, usando substituição manual: ' . $e->getMessage());
+            Log::warning('Blade::render falhou, usando substituição manual: ' . $e->getMessage());
 
             $filledHtml = $rawTemplate;
 
@@ -293,7 +295,7 @@ class Contrato extends Controller
         }
 
         // Debug: Log das variáveis principais
-        \Log::debug('Template renderizado - Logo:', [
+        Log::debug('Template renderizado - Logo:', [
             'logo_path' => $parametros->logo ?? 'Nenhuma',
             'logo_html' => $logo_html ? 'Definida' : 'Vazia',
             'logo_raw' => $logo_raw ? 'Definida' : 'Vazia',
