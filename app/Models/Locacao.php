@@ -45,6 +45,7 @@ class Locacao extends Model
         'dados_fiador',
         'assinafy_document_id',
         'assinafy_status',
+        'qtd_meses',
     ];
 
     protected $casts = [

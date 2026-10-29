@@ -69,6 +69,10 @@ class VeiculoResource extends Resource
                                 ->prefix('R$')
                                 ->label('Valor Semanal')
                                 ->numeric(),
+                            Forms\Components\TextInput::make('valor_mes')
+                                ->prefix('R$')
+                                ->label('Valor Mensal')
+                                ->numeric(),
 
                             FileUpload::make('documentos')
                                 /* ->columnSpan([

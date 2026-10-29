@@ -234,18 +234,15 @@ class LocacaoResource extends Resource
                                                     ->options([
                                                         '1' => 'Diária',
                                                         '2' => 'Semanal',
+                                                        '3' => 'Mensal',
                                                     ])
                                                     ->inline()
                                                     ->inlineLabel(false)
                                                     ->live()
                                                     ->afterStateUpdated(function (Get $get, Set $set, $state) {
-                                                        // Reset quando mudar a forma de locação
                                                         if ($state == 1) {
-                                                            $set('qtd_semanas', null);
                                                         } else {
-                                                            $set('qtd_diarias', null);
                                                         }
-                                                        self::recalcularValores($get, $set);
                                                     })
                                                     ->default(1)
                                                     ->required()
@@ -253,33 +250,6 @@ class LocacaoResource extends Resource
                                                         'xl' => 2,
                                                         '2xl' => 2,
                                                     ]),
-                                                Forms\Components\TextInput::make('qtd_diarias')
-                                                    ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #CF9A16;'])
-                                                    ->label('Qtd Dias')
-                                                    ->numeric()
-                                                    ->default(1)
-                                                    ->live(onBlur: true)
-                                                    ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                                        if (!$state || !$get('veiculo_id') || !$get('data_saida') || !$get('hora_saida')) {
-                                                            return;
-                                                        }
-
-                                                        $dataSaida = Carbon::parse($get('data_saida'));
-                                                        $dataRetorno = $dataSaida->copy()->addDays($state);
-
-                                                        $veiculo = Veiculo::select('valor_diaria')->find($get('veiculo_id'));
-                                                        if (!$veiculo) return;
-
-                                                        $valorTotal = $veiculo->valor_diaria * $state;
-
-                                                        $set('data_retorno', $dataRetorno->format('Y-m-d'));
-                                                        $set('hora_retorno', Carbon::parse($get('hora_saida'))->format('H:i'));
-                                                        $set('valor_total', $valorTotal);
-                                                        $set('valor_desconto', 0);
-                                                        $set('valor_total_desconto', $valorTotal);
-                                                    })
-                                                    ->hidden(fn(Get $get) => $get('forma_locacao') == 2)
-                                                    ->required(fn(Get $get) => $get('forma_locacao') == 1),
                                                 Forms\Components\TextInput::make('qtd_semanas')
                                                     ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #CF9A16;'])
                                                     ->label('Qtd Semanas')
@@ -287,28 +257,55 @@ class LocacaoResource extends Resource
                                                     ->default(1)
                                                     ->live(onBlur: true)
                                                     ->afterStateUpdated(function ($state, callable $set, Get $get) {
-                                                        if (!$state || !$get('veiculo_id') || !$get('data_saida') || !$get('hora_saida')) {
-                                                            return;
-                                                        }
-
-                                                        $dataSaida = Carbon::parse($get('data_saida'));
-                                                        $dataRetorno = $dataSaida->copy()->addWeeks($state);
-                                                        $qtdDias = $dataSaida->diffInDays($dataRetorno);
-
-                                                        $veiculo = Veiculo::select('valor_semana')->find($get('veiculo_id'));
-                                                        if (!$veiculo) return;
-
-                                                        $valorTotal = $veiculo->valor_semana * $state;
-
-                                                        $set('data_retorno', $dataRetorno->format('Y-m-d'));
+                                                        $set('data_retorno', Carbon::parse($get('data_saida'))->addWeeks($state)->format('Y-m-d'));
                                                         $set('hora_retorno', Carbon::parse($get('hora_saida'))->format('H:i'));
-                                                        $set('qtd_diarias', $qtdDias);
-                                                        $set('valor_total', $valorTotal);
+                                                        $set('qtd_diarias', Carbon::parse($get('data_saida'))->addWeeks($state)->diffInDays(Carbon::parse($get('data_saida'))));
+
+                                                        $carro = Veiculo::find($get('veiculo_id'));
+                                                        $set('valor_total', ($carro->valor_semana * $state));
                                                         $set('valor_desconto', 0);
-                                                        $set('valor_total_desconto', $valorTotal);
+                                                        $set('valor_total_desconto', ($carro->valor_semana * $state));
+                                                        Notification::make()
+                                                            ->title('ATENÇÃO')
+                                                            ->body(
+                                                                'Para as informações escolhida temos:<br>
+                                                        <b>' . $state . ' SEMANA(S) / ' . $get('qtd_diarias') . ' DIA(AS), e data de retorno do veículo para ' . Carbon::parse($get('data_saida'))->addWeeks($state)->format('d/m/Y') . '</b><br>
+                                                        '
+                                                            )
+                                                            ->danger()
+                                                            ->persistent()
+                                                            ->send();
                                                     })
-                                                    ->hidden(fn(Get $get) => $get('forma_locacao') == 1)
+                                                    ->hidden(fn(Get $get) => $get('forma_locacao') != 2)
                                                     ->required(fn(Get $get) => $get('forma_locacao') == 2),
+                                                Forms\Components\TextInput::make('qtd_meses')
+                                                    ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #CF9A16;'])
+                                                    ->label('Qtd Meses')
+                                                    ->numeric()
+                                                    ->default(1)
+                                                    ->live(onBlur: true)
+                                                    ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                                        $set('data_retorno', Carbon::parse($get('data_saida'))->addMonths($state)->format('Y-m-d'));
+                                                        $set('hora_retorno', Carbon::parse($get('hora_saida'))->format('H:i'));
+                                                        $set('qtd_diarias', Carbon::parse($get('data_saida'))->addMonths($state)->diffInDays(Carbon::parse($get('data_saida'))));
+
+                                                        $carro = Veiculo::find($get('veiculo_id'));
+                                                        $set('valor_total', ($carro->valor_mes * $state));
+                                                        $set('valor_desconto', 0);
+                                                        $set('valor_total_desconto', ($carro->valor_mes * $state));
+                                                        Notification::make()
+                                                            ->title('ATENÇÃO')
+                                                            ->body(
+                                                                'Para as informações escolhida temos:<br>
+                                                        <b>' . $state . ' MÊS(ES) / ' . $get('qtd_diarias') . ' DIA(AS), e data de retorno do veículo para ' . Carbon::parse($get('data_saida'))->addMonths($state)->format('d/m/Y') . '</b><br>
+                                                        '
+                                                            )
+                                                            ->danger()
+                                                            ->persistent()
+                                                            ->send();
+                                                    })
+                                                    ->hidden(fn(Get $get) => $get('forma_locacao') != 3)
+                                                    ->required(fn(Get $get) => $get('forma_locacao') == 3),
                                             ]),
                                     ]),
                                 Fieldset::make('Datas e Valores')
@@ -417,7 +414,7 @@ class LocacaoResource extends Resource
                                                             } else {
                                                                 $set('valor_parcela_financeiro', 0);
                                                                 $set('parcelas_financeiro', null);
-                                                                $set('formaPgmto_financeiro', null);
+                                                                $set('forma_pgmto_id', null);
                                                                 $set('valor_total_financeiro', 0);
                                                             }
                                                         }
@@ -440,7 +437,7 @@ class LocacaoResource extends Resource
                                                             } else {
                                                                 $set('valor_parcela_financeiro', null);
                                                                 $set('parcelas_financeiro', null);
-                                                                $set('formaPgmto_financeiro', null);
+                                                                $set('forma_pgmto_id', null);
                                                             }
                                                         }
                                                     )
@@ -760,7 +757,7 @@ class LocacaoResource extends Resource
                         default => 'secondary'
                     })
                     ->formatStateUsing(fn($state) => $state == 0 ? 'Locado' : 'Finalizada')
-                    ->toggleable(),                
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
@@ -880,7 +877,7 @@ class LocacaoResource extends Resource
                     ->label('Exportar')
                     ->modalHeading('Confirmar exportação?'),
             ])
-            ->actions([                
+            ->actions([
                 Tables\Actions\Action::make('GerarContrato')
                     ->label('Gerar Documento')
                     ->icon('heroicon-o-document-text')
@@ -908,7 +905,7 @@ class LocacaoResource extends Resource
                                 ]);
                         }
                     }),
-                    
+
                 Tables\Actions\DeleteAction::make()
                     ->before(function ($record) {
                         if ($record->veiculo_id) {
