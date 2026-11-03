@@ -250,6 +250,33 @@ class LocacaoResource extends Resource
                                                         'xl' => 2,
                                                         '2xl' => 2,
                                                     ]),
+                                                Forms\Components\TextInput::make('qtd_diarias')
+                                                    ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #CF9A16;'])
+                                                    ->label('Qtd Diárias')
+                                                    ->numeric()
+                                                    ->default(1)
+                                                    ->live(onBlur: true)
+                                                    ->afterStateUpdated(function ($state, callable $set, Get $get) {
+                                                        $set('data_retorno', Carbon::parse($get('data_saida'))->addDays($state)->format('Y-m-d'));
+                                                        $set('hora_retorno', Carbon::parse($get('hora_saida'))->format('H:i'));
+
+                                                        $carro = Veiculo::find($get('veiculo_id'));
+                                                        $set('valor_total', ($carro->valor_diaria * $state));
+                                                        $set('valor_desconto', 0);
+                                                        $set('valor_total_desconto', ($carro->valor_diaria * $state));
+                                                        Notification::make()
+                                                            ->title('ATENÇÃO')
+                                                            ->body(
+                                                                'Para as informações escolhida temos:<br>
+                                                        <b>' . $state . ' DIA(AS), e data de retorno do veículo para ' . Carbon::parse($get('data_saida'))->addDays($state)->format('d/m/Y') . '</b><br>
+                                                        '
+                                                            )
+                                                            ->danger()
+                                                            ->persistent()
+                                                            ->send();
+                                                    })
+                                                    ->hidden(fn(Get $get) => $get('forma_locacao') != 1)
+                                                    ->required(fn(Get $get) => $get('forma_locacao') == 1),
                                                 Forms\Components\TextInput::make('qtd_semanas')
                                                     ->extraInputAttributes(['style' => 'font-weight: bolder; font-size: 1rem; color: #CF9A16;'])
                                                     ->label('Qtd Semanas')

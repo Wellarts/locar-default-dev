@@ -219,6 +219,8 @@
                 'valor_caucao' => 'Caução (R$)',
                 'data_hoje' => 'Data de hoje (dd/mm/aaaa)',
                 'observacoes' => 'Observações adicionais',
+                'parcelas_financeiro' => 'Número de parcelas no financeiro',
+                'valor_parcela_financeiro' => 'Valor de cada parcela no financeiro (R$)',
             ];
             
             foreach ($dataVars as $var => $desc) {

@@ -195,6 +195,8 @@ class Contrato extends Controller
             'valor_caucao'         => $valor_caucao,
             'data_hoje'            => $data_hoje,
             'observacoes'          => $locacao->obs           ?? '',
+            'parcelas_financeiro'  => $locacao->parcelas_financeiro   ?? '',
+            'valor_parcela_financeiro' => $locacao->valor_parcela_financeiro ?? '',
 
             'testemunha_1'     => $locacao->testemunha_1     ?? '',
             'testemunha_1_rg'  => $locacao->testemunha_1_rg  ?? '',
