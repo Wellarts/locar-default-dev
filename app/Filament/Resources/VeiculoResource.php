@@ -47,10 +47,13 @@ class VeiculoResource extends Resource
                                 ->required()
                                 ->options(Marca::all()->pluck('nome', 'id')->toArray()),
                             Forms\Components\TextInput::make('ano')
+                                ->required()
                                 ->numeric(),
                             Forms\Components\TextInput::make('placa')
+                                ->required()
                                 ->maxLength(255),
                             Forms\Components\TextInput::make('cor')
+                                ->required()
                                 ->maxLength(255),
                             Forms\Components\TextInput::make('km_atual')
                                 ->label('Km Atual')
